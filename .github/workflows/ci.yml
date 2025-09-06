@@ -10,20 +10,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Install Node LTS and enable cache for pnpm lockfile
-      - name: Setup Node (LTS)
+      # Make pnpm available BEFORE setup-node tries to cache it
+      - name: Enable pnpm (Corepack)
+        run: |
+          corepack enable
+          corepack prepare pnpm@9 --activate || corepack prepare pnpm@8 --activate
+          pnpm -v
+
+      # Now it's safe to use cache: pnpm
+      - name: Setup Node (LTS) + cache
         uses: actions/setup-node@v4
         with:
           node-version: 'lts/*'
           cache: 'pnpm'
           cache-dependency-path: pnpm-lock.yaml
-
-      # Activate pnpm via Corepack (ships with Node) so pnpm exists on PATH
-      - name: Enable pnpm (Corepack)
-        run: |
-          corepack enable
-          corepack prepare pnpm@9 --activate
-          pnpm -v
 
       - name: Install deps
         run: pnpm install --frozen-lockfile
@@ -31,21 +31,5 @@ jobs:
       - name: Typecheck
         run: pnpm run typecheck
 
-      - name: Test with coverage (Vitest)
-        run: pnpm run test -- --coverage --coverage.reporter=lcov --coverage.reporter=text-summary --coverage.reporter=json-summary
-
-      - name: Upload coverage artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-report
-          path: coverage/
-          if-no-files-found: error
-
-      - name: Add coverage to run summary
-        if: always()
-        run: |
-          if [ -f coverage/coverage-summary.json ]; then
-            node -e "const s=require('./coverage/coverage-summary.json').total; const rows=Object.entries(s).map(([k,v])=>`| ${k} | ${v.pct}% | ${v.covered}/${v.total} |`).join('\n'); console.log('**Coverage summary**\n\n| Metric | % | Covered/Total |\n|---|---:|---:|\n'+rows);" >> $GITHUB_STEP_SUMMARY
-          else
-            echo 'No coverage summary found.' >> $GITHUB_STEP_SUMMARY
-          fi
+      - name: Unit tests
+        run: pnpm run test
