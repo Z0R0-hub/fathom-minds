@@ -14,7 +14,7 @@ jobs:
       - name: Enable pnpm (Corepack)
         run: |
           corepack enable
-          corepack prepare pnpm@9 --activate || corepack prepare pnpm@8 --activate
+           corepack prepare pnpm@10 --activate
           pnpm -v
 
       # Now it's safe to use cache: pnpm
