@@ -1,0 +1,34 @@
+{
+  "properties": [
+    {
+      "id": "ALB-001",
+      "label": "Urban small lot — Lavington",
+      "zone": "R1 General Residential",
+      "lot_size_m2": 420,
+      "frontage_m": 12.0,
+      "corner_lot": false,
+      "setbacks_m": { "front": 5.5, "left": 1.0, "right": 1.0, "rear": 1.0},
+      "notes": "Typical small lot behind dwelling."
+    },
+    {
+      "id": "ALB-002",
+      "label": "Suburban corner lot — East Albury",
+      "zone": "R1 General Residential",
+      "lot_size_m2": 720,
+      "frontage_m": 18.0,
+      "corner_lot": true,
+      "setbacks_m": { "front": 6.0, "secondary_front": 3.0, "left": 1.5, "right": 2.0, "rear": 5.0 },
+      "notes": "Corner geometry for boundary-distance tests."
+    },
+    {
+      "id": "ALB-003",
+      "label": "Large lot — Thurgoona/Wirlinga fringe",
+      "zone": "R5 Large Lot Residential",
+      "lot_size_m2": 2400,
+      "frontage_m": 30.0,
+      "corner_lot": false,
+      "setbacks_m": { "front": 10.0, "left": 5.0, "right": 5.0, "rear": 10.0 },
+      "notes": "Roomy site for larger-but-exempt scenarios."
+    }
+  ]
+}
