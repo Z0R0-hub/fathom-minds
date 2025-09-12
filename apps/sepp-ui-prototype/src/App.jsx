@@ -1,12 +1,11 @@
-// src/App.jsx
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { loadProperties } from "./data/loadProperties";
+import { runAssessment } from "./data/runAssessment";
 import "./App.css";
 
 function Badge({ tone = "neutral", children }) {
   return <span className={`badge badge--${tone}`}>{children}</span>;
 }
-
 function Chip({ children }) {
   return <span className="chip">{children}</span>;
 }
@@ -26,6 +25,9 @@ export default function App() {
   // Loader state
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Rules engine assessment state
+  const [assessment, setAssessment] = useState({ status: "idle" });
 
   // Load + validate sample data at runtime
   useEffect(() => {
@@ -51,6 +53,31 @@ export default function App() {
   const selected = properties.find((p) => p.id === selectedId);
   const safeNum = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
   const area = safeNum(length) * safeNum(width);
+
+  // Build a proposal object for the engine
+  const proposal = useMemo(
+    () => ({
+      kind: type, // "shed" | "patio"
+      length_m: safeNum(length),
+      width_m: safeNum(width),
+      height_m: safeNum(height),
+      nearest_boundary_m: safeNum(setback),
+      area_m2: area,
+    }),
+    [type, length, width, height, setback, area]
+  );
+
+  // Run rules engine whenever inputs or selected site change
+  useEffect(() => {
+    if (!selected) return;
+    setAssessment({ status: "running" });
+    const out = runAssessment(selected, proposal);
+    if (out.ok) {
+      setAssessment({ status: "done", checks: out.result.checks || [] });
+    } else {
+      setAssessment({ status: "error", message: out.message });
+    }
+  }, [selected, proposal]);
 
   // --------- States: loading / error ----------
   if (loading) {
@@ -240,6 +267,41 @@ export default function App() {
             </div>
             <hr className="rule" />
             <p className="muted">Sprint 3: SEPP/LEP rules engine appears here.</p>
+          </section>
+
+          {/* NEW: Rules assessment */}
+          <section className="card">
+            <div className="card-header">
+              <h3>SEPP/LEP checks</h3>
+            </div>
+
+            {assessment.status === "running" && <p>Running checks…</p>}
+
+            {assessment.status === "error" && (
+              <div className="card card--error" style={{ margin: 0 }}>
+                <p><strong>Couldn’t run rules:</strong> {assessment.message}</p>
+                <p className="muted">Ensure <code>src/engine/assess.ts</code> exports a function.</p>
+              </div>
+            )}
+
+            {assessment.status === "done" && (
+              <>
+                {assessment.checks?.length ? (
+                  <ul style={{ paddingLeft: 18, margin: "6px 0" }}>
+                    {assessment.checks.map((c) => (
+                      <li key={c.id} style={{ margin: "6px 0" }}>
+                        <span style={{ fontWeight: 600, color: c.ok ? "#16a34a" : "#dc2626" }}>
+                          {c.ok ? "✓" : "✕"}
+                        </span>{" "}
+                        {c.message}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="muted">No checks returned by engine.</p>
+                )}
+              </>
+            )}
           </section>
 
           {/* Raw JSON details */}
