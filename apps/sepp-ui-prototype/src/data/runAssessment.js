@@ -1,7 +1,6 @@
 import * as mod from "../../../../src/engine/assess";
 
-const r1 = (n) => Math.round(n * 10) / 10;
-
+// Normalise engine output into { ok, result: { checks[] , verdict } }
 export function runAssessment(property, proposal) {
   try {
     const assess = mod.assess || mod.default;
@@ -9,48 +8,50 @@ export function runAssessment(property, proposal) {
       return { ok: false, message: "Rules engine not found (src/engine/assess)." };
     }
 
-    // Map UI fields to the engine fields
+    // Map proposal into the engine's RuleInput shape
     const input = {
-      length: Number(proposal.length_m ?? proposal.length ?? 0),
-      width: Number(proposal.width_m ?? proposal.width ?? 0),
-      height: Number(proposal.height_m ?? proposal.height ?? 0),
-      setback: Number(proposal.nearest_boundary_m ?? proposal.setback ?? 0),
-      // keep property around in case the engine uses it later
-      property,
+      length: Number(proposal.length_m) || 0,
+      width: Number(proposal.width_m) || 0,
+      height: Number(proposal.height_m) || 0,
+      setback: Number(proposal.nearest_boundary_m) || 0,
     };
 
-    // Call engine
-    const res = assess(input);
+    const result = assess(input);
 
-    // Compute pass/fail for each rule so the UI can show PASS/FAIL lines
-    const passArea = input.length * input.width <= 20;
-    const passHeight = input.height <= 3.0;
-    const passSetback = input.setback >= 0.5;
+    let checks = [];
 
-    const checks = [
-      {
-        id: "area",
-        message: "Area ≤ 20 m²",
-        ok: passArea,
-        detail: passArea ? undefined : `Area ${r1(input.length * input.width)} m² exceeds 20 m²`,
-      },
-      {
-        id: "height",
-        message: "Height ≤ 3.0 m",
-        ok: passHeight,
-        detail: passHeight ? undefined : `Height ${r1(input.height)} m exceeds 3.0 m`,
-      },
-      {
-        id: "setback",
-        message: "Nearest boundary ≥ 0.5 m",
-        ok: passSetback,
-        detail: passSetback ? undefined : `Nearest boundary distance ${r1(input.setback)} m is under 0.5 m`,
-      },
-    ];
+    // Preferred: engine reasons[] -> checks[]
+    if (Array.isArray(result?.reasons)) {
+      checks = result.reasons.map((r, i) => ({
+        id: `rule_${i + 1}`,
+        ok: /\bsatisfied\b/i.test(r),      // PASS if engine says "… satisfied"
+        message: r,                        // show the engine's text verbatim
+      }));
+    }
+    // Fallbacks (if your engine ever returns structured checks)
+    else if (Array.isArray(result?.checks)) {
+      checks = result.checks.map((c, i) => ({
+        id: c.id || `rule_${i + 1}`,
+        ok: !!(c.ok ?? c.pass ?? c.valid),
+        message: c.message || c.title || "Check",
+      }));
+    } else if (Array.isArray(result)) {
+      // Very defensive: array of strings/booleans/objects
+      checks = result.map((c, i) =>
+        typeof c === "string"
+          ? { id: `rule_${i + 1}`, ok: /\bsatisfied\b/i.test(c), message: c }
+          : typeof c === "boolean"
+          ? { id: `rule_${i + 1}`, ok: c, message: c ? "Pass" : "Fail" }
+          : {
+              id: c.id || `rule_${i + 1}`,
+              ok: !!(c.ok ?? c.pass ?? c.valid),
+              message: c.message || c.title || "Check",
+            }
+      );
+    }
 
-    // Pass through verdict/reasons if you want to show them later
-    return { ok: true, result: { checks, verdict: res?.verdict, reasons: res?.reasons } };
+    return { ok: true, result: { checks, verdict: result?.verdict } };
   } catch (e) {
-    return { ok: false, message: e?.message || String(e) };
+    return { ok: false, message: e.message || String(e) };
   }
 }
