@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { loadProperties } from "./data/loadProperties";
 import { runAssessment } from "./data/runAssessment";
 import "./App.css";
@@ -70,13 +70,47 @@ export default function App() {
   // Run rules engine whenever inputs or selected site change
   useEffect(() => {
     if (!selected) return;
-    setAssessment({ status: "running" });
-    const out = runAssessment(selected, proposal);
-    if (out.ok) {
-      setAssessment({ status: "done", checks: out.result.checks || [] });
-    } else {
-      setAssessment({ status: "error", message: out.message });
-    }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        setAssessment({ status: "running" });
+
+        // Support both signatures:
+        //  - runAssessment(selected, proposal)
+        //  - runAssessment({ property: selected, proposal })
+        const maybePromise = runAssessment.length >= 2
+          ? runAssessment(selected, proposal)
+          : runAssessment({ property: selected, proposal });
+
+        const out = await maybePromise;
+
+        if (cancelled) return;
+
+        if (out && out.ok) {
+          const checks =
+            out.checks ||
+            out.issues ||
+            out.result?.checks ||
+            out.result?.issues ||
+            [];
+          setAssessment({ status: "done", checks });
+        } else {
+          setAssessment({
+            status: "error",
+            message: out?.message || "Unknown engine error",
+          });
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setAssessment({ status: "error", message: e.message || String(e) });
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [selected, proposal]);
 
   // --------- States: loading / error ----------
@@ -266,39 +300,37 @@ export default function App() {
               </div>
             </div>
             <hr className="rule" />
-            <p className="muted">Sprint 3: SEPP/LEP rules engine appears here.</p>
+            <p className="muted">Prototype rules engine runs live below.</p>
           </section>
 
-          {/* NEW: Rules assessment */}
+          {/* Rules assessment */}
           <section className="card">
             <div className="card-header">
               <h3>SEPP/LEP checks</h3>
             </div>
 
-            {assessment.status === "running" && <p>Running checks…</p>}
+            {assessment.status === "running" && <p className="muted">Running checks…</p>}
 
             {assessment.status === "error" && (
               <div className="card card--error" style={{ margin: 0 }}>
                 <p><strong>Couldn’t run rules:</strong> {assessment.message}</p>
-                <p className="muted">Ensure <code>src/engine/assess.ts</code> exports a function.</p>
+                <p className="muted">Ensure the engine exports an assess function and the wrapper returns {"{ ok, issues }"}.</p>
               </div>
             )}
 
             {assessment.status === "done" && (
               <>
-                {assessment.checks?.length ? (
-                  <ul style={{ paddingLeft: 18, margin: "6px 0" }}>
-                    {assessment.checks.map((c) => (
-                      <li key={c.id} style={{ margin: "6px 0" }}>
-                        <span style={{ fontWeight: 600, color: c.ok ? "#16a34a" : "#dc2626" }}>
-                          {c.ok ? "✓" : "✕"}
-                        </span>{" "}
-                        {c.message}
+                {Array.isArray(assessment.checks) && assessment.checks.length ? (
+                  <ul className="issues" style={{ marginTop: 8 }}>
+                    {assessment.checks.map((c, i) => (
+                      <li key={c.id || i}>
+                        <strong>{c.ok ? "PASS" : "FAIL"}:</strong>{" "}
+                        {c.message || c.code || "See details"}
                       </li>
                     ))}
                   </ul>
                 ) : (
-                  <p className="muted">No checks returned by engine.</p>
+                  <p className="muted">No issues reported by the engine.</p>
                 )}
               </>
             )}
