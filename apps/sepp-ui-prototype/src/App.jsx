@@ -79,12 +79,12 @@ export default function App() {
         // Support both signatures:
         //  - runAssessment(selected, proposal)
         //  - runAssessment({ property: selected, proposal })
-        const maybePromise = runAssessment.length >= 2
-          ? runAssessment(selected, proposal)
-          : runAssessment({ property: selected, proposal });
+        const maybePromise =
+          runAssessment.length >= 2
+            ? runAssessment(selected, proposal)
+            : runAssessment({ property: selected, proposal });
 
         const out = await maybePromise;
-
         if (cancelled) return;
 
         if (out && out.ok) {
@@ -94,7 +94,15 @@ export default function App() {
             out.result?.checks ||
             out.result?.issues ||
             [];
-          setAssessment({ status: "done", checks });
+
+          // Compute a verdict if engine didn't provide one
+          const verdict =
+            out.result?.verdict ||
+            (Array.isArray(checks) && checks.every((c) => !!(c.ok ?? c.pass ?? c.valid))
+              ? "LIKELY_EXEMPT"
+              : "NOT_EXEMPT");
+
+          setAssessment({ status: "done", checks, result: { verdict } });
         } else {
           setAssessment({
             status: "error",
@@ -124,7 +132,9 @@ export default function App() {
             <Badge tone="neutral">Loading…</Badge>
           </div>
         </header>
-        <div className="card"><p>Loading sample data…</p></div>
+        <div className="card">
+          <p>Loading sample data…</p>
+        </div>
       </main>
     );
   }
@@ -150,7 +160,9 @@ export default function App() {
               ))}
             </ul>
           )}
-          <p className="muted">Fix <code>public/data/properties.json</code> to continue.</p>
+          <p className="muted">
+            Fix <code>public/data/properties.json</code> to continue.
+          </p>
         </div>
       </main>
     );
@@ -278,7 +290,8 @@ export default function App() {
 
             <p className="muted">
               Area = <strong>{area.toFixed(2)} m²</strong> &nbsp;|&nbsp; Height ={" "}
-              <strong>{height}</strong> m &nbsp;|&nbsp; Setback = <strong>{setback}</strong> m
+              <strong>{height}</strong> m &nbsp;|&nbsp; Setback ={" "}
+              <strong>{setback}</strong> m
             </p>
           </section>
         </div>
@@ -291,7 +304,9 @@ export default function App() {
               <h3>Data validation</h3>
             </div>
             <div className="ok-line">
-              <span className="bigcheck" aria-hidden>✓</span>
+              <span className="bigcheck" aria-hidden>
+                ✓
+              </span>
               <div>
                 <div className="ok-head">All sample data valid</div>
                 <div className="muted">
@@ -309,18 +324,54 @@ export default function App() {
               <h3>SEPP/LEP checks</h3>
             </div>
 
-            {assessment.status === "running" && <p className="muted">Running checks…</p>}
+            {assessment.status === "running" && (
+              <p className="muted">Running checks…</p>
+            )}
 
             {assessment.status === "error" && (
               <div className="card card--error" style={{ margin: 0 }}>
-                <p><strong>Couldn’t run rules:</strong> {assessment.message}</p>
-                <p className="muted">Ensure the engine exports an assess function and the wrapper returns {"{ ok, issues }"}.</p>
+                <p>
+                  <strong>Couldn’t run rules:</strong> {assessment.message}
+                </p>
+                <p className="muted">
+                  Ensure the engine exports an assess function and the wrapper
+                  returns {"{ ok, issues }"}.
+                </p>
               </div>
             )}
 
             {assessment.status === "done" && (
               <>
-                {Array.isArray(assessment.checks) && assessment.checks.length ? (
+                {/* Verdict badge */}
+                <p style={{ margin: "6px 0 12px" }}>
+                  <strong>Verdict:</strong>{" "}
+                  <span
+                    style={{
+                      padding: "2px 8px",
+                      borderRadius: 999,
+                      background:
+                        (assessment.result?.verdict || "NOT_EXEMPT") ===
+                        "LIKELY_EXEMPT"
+                          ? "#DCFCE7"
+                          : "#FEE2E2",
+                      color:
+                        (assessment.result?.verdict || "NOT_EXEMPT") ===
+                        "LIKELY_EXEMPT"
+                          ? "#166534"
+                          : "#991B1B",
+                    }}
+                  >
+                    {assessment.result?.verdict ||
+                      (Array.isArray(assessment.checks) &&
+                      assessment.checks.every((c) => c.ok)
+                        ? "LIKELY_EXEMPT"
+                        : "NOT_EXEMPT")}
+                  </span>
+                </p>
+
+                {/* Checks list */}
+                {Array.isArray(assessment.checks) &&
+                assessment.checks.length ? (
                   <ul className="issues" style={{ marginTop: 8 }}>
                     {assessment.checks.map((c, i) => (
                       <li key={c.id || i}>
