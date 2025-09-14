@@ -10,6 +10,44 @@ function Chip({ children }) {
   return <span className="chip">{children}</span>;
 }
 
+// ---------- helpers for export ----------
+function download(filename, text, type = "text/plain") {
+  const blob = new Blob([text], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function toCSV(rows) {
+  const headers = ["id", "label", "zone", "lot_size_m2", "frontage_m", "corner_lot"];
+  const esc = (v) =>
+    typeof v === "string" && (v.includes(",") || v.includes('"') || v.includes("\n"))
+      ? `"${v.replace(/"/g, '""')}"`
+      : v;
+  const lines = [headers.join(",")].concat(
+    rows.map((r) =>
+      [
+        r.id,
+        r.label,
+        r.zone,
+        r.lot_size_m2 ?? "",
+        r.frontage_m ?? "",
+        String(!!r.corner_lot),
+      ]
+        .map(esc)
+        .join(",")
+    )
+  );
+  return lines.join("\n");
+}
+
+const LS_KEY = "sepp_props_additions";
+
 export default function App() {
   // Data from loader
   const [properties, setProperties] = useState([]);
@@ -29,6 +67,17 @@ export default function App() {
   // Rules engine assessment state
   const [assessment, setAssessment] = useState({ status: "idle" });
 
+  // Modal state (add sample)
+  const [showAdd, setShowAdd] = useState(false);
+  const [addForm, setAddForm] = useState({
+    label: "",
+    zone: "R1 General Residential",
+    lot_size_m2: "",
+    frontage_m: "",
+    corner_lot: false,
+  });
+  const [dirtySinceExport, setDirtySinceExport] = useState(false);
+
   // Load + validate sample data at runtime
   useEffect(() => {
     (async () => {
@@ -36,8 +85,14 @@ export default function App() {
         const res = await loadProperties();
         if (res.ok) {
           const list = res.data.properties || [];
-          setProperties(list);
-          if (list.length) setSelectedId(list[0].id);
+          // Merge in local additions (persisted)
+          let additions = [];
+          try {
+            additions = JSON.parse(localStorage.getItem(LS_KEY) || "[]");
+          } catch (_) {}
+          const merged = [...list, ...additions];
+          setProperties(merged);
+          if (merged.length) setSelectedId(merged[0].id);
           setError(null);
         } else {
           setError(res); // { message, issues[] }
@@ -76,9 +131,6 @@ export default function App() {
       try {
         setAssessment({ status: "running" });
 
-        // Support both signatures:
-        //  - runAssessment(selected, proposal)
-        //  - runAssessment({ property: selected, proposal })
         const maybePromise =
           runAssessment.length >= 2
             ? runAssessment(selected, proposal)
@@ -95,7 +147,6 @@ export default function App() {
             out.result?.issues ||
             [];
 
-          // Compute a verdict if engine didn't provide one
           const verdict =
             out.result?.verdict ||
             (Array.isArray(checks) && checks.every((c) => !!(c.ok ?? c.pass ?? c.valid))
@@ -121,6 +172,75 @@ export default function App() {
     };
   }, [selected, proposal]);
 
+  // ---- Add sample handlers ----
+  function slugIdFromLabel(label) {
+    const base =
+      label
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "") || "sample";
+    const suffix = Math.random().toString(36).slice(2, 6);
+    return `${base}-${suffix}`;
+  }
+
+  function handleAddSample(saveAndExport = null) {
+    const label = addForm.label.trim();
+    if (!label) {
+      alert("Please enter a label.");
+      return;
+    }
+    const newProp = {
+      id: slugIdFromLabel(label),
+      label,
+      zone: addForm.zone.trim() || "R1 General Residential",
+      lot_size_m2: Number(addForm.lot_size_m2) || 0,
+      frontage_m: Number(addForm.frontage_m) || 0,
+      corner_lot: !!addForm.corner_lot,
+
+      // minimal extra fields that won’t break anything downstream
+      setbacks_m: { front: 0, left: 0, right: 0, rear: 0 },
+    };
+
+    const next = [...properties, newProp];
+    setProperties(next);
+    setSelectedId(newProp.id);
+    setShowAdd(false);
+    setAddForm({
+      label: "",
+      zone: "R1 General Residential",
+      lot_size_m2: "",
+      frontage_m: "",
+      corner_lot: false,
+    });
+    setDirtySinceExport(true);
+
+    // persist additions in localStorage (add only the new one)
+    let additions = [];
+    try {
+      additions = JSON.parse(localStorage.getItem(LS_KEY) || "[]");
+    } catch (_) {}
+    additions.push(newProp);
+    localStorage.setItem(LS_KEY, JSON.stringify(additions));
+
+    if (saveAndExport === "json") {
+      handleExportJSON(next);
+    } else if (saveAndExport === "csv") {
+      handleExportCSV(next);
+    }
+  }
+
+  function handleExportJSON(list = properties) {
+    // format matches public/data/properties.json
+    const json = JSON.stringify({ properties: list }, null, 2);
+    download("properties.json", json, "application/json");
+    setDirtySinceExport(false);
+  }
+  function handleExportCSV(list = properties) {
+    download("properties.csv", toCSV(list), "text/csv");
+    setDirtySinceExport(false);
+  }
+
   // --------- States: loading / error ----------
   if (loading) {
     return (
@@ -132,9 +252,7 @@ export default function App() {
             <Badge tone="neutral">Loading…</Badge>
           </div>
         </header>
-        <div className="card">
-          <p>Loading sample data…</p>
-        </div>
+        <div className="card"><p>Loading sample data…</p></div>
       </main>
     );
   }
@@ -160,9 +278,7 @@ export default function App() {
               ))}
             </ul>
           )}
-          <p className="muted">
-            Fix <code>public/data/properties.json</code> to continue.
-          </p>
+          <p className="muted">Fix <code>public/data/properties.json</code> to continue.</p>
         </div>
       </main>
     );
@@ -189,7 +305,27 @@ export default function App() {
             </div>
 
             <label className="field">
-              <span className="label">Choose sample</span>
+              <span className="label" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                Choose sample
+                <button
+                  type="button"
+                  aria-label="Add sample"
+                  onClick={() => setShowAdd(true)}
+                  title="Add sample"
+                  style={{
+                    border: "1px solid #e5e7eb",
+                    background: "white",
+                    padding: "2px 8px",
+                    borderRadius: 6,
+                    cursor: "pointer",
+                    fontWeight: 600,
+                    lineHeight: 1.1,
+                  }}
+                >
+                  +
+                </button>
+              </span>
+
               <select
                 value={selectedId}
                 onChange={(e) => setSelectedId(e.target.value)}
@@ -203,11 +339,24 @@ export default function App() {
               </select>
             </label>
 
+            {dirtySinceExport && (
+              <div className="muted" style={{ marginTop: 8 }}>
+                Added samples not yet exported.{" "}
+                <button className="link" onClick={() => handleExportJSON()}>
+                  Download JSON
+                </button>{" "}
+                ·{" "}
+                <button className="link" onClick={() => handleExportCSV()}>
+                  Download CSV
+                </button>
+              </div>
+            )}
+
             {selected && (
               <div className="chips">
                 <Chip>{selected.zone}</Chip>
-                <Chip>{`${selected.lot_size_m2.toLocaleString()} m²`}</Chip>
-                <Chip>{`Frontage ${selected.frontage_m} m`}</Chip>
+                <Chip>{`${(selected.lot_size_m2 ?? 0).toLocaleString()} m²`}</Chip>
+                <Chip>{`Frontage ${selected.frontage_m ?? 0} m`}</Chip>
                 {selected.corner_lot && <Chip>Corner lot</Chip>}
               </div>
             )}
@@ -290,8 +439,7 @@ export default function App() {
 
             <p className="muted">
               Area = <strong>{area.toFixed(2)} m²</strong> &nbsp;|&nbsp; Height ={" "}
-              <strong>{height}</strong> m &nbsp;|&nbsp; Setback ={" "}
-              <strong>{setback}</strong> m
+              <strong>{height}</strong> m &nbsp;|&nbsp; Setback = <strong>{setback}</strong> m
             </p>
           </section>
         </div>
@@ -304,9 +452,7 @@ export default function App() {
               <h3>Data validation</h3>
             </div>
             <div className="ok-line">
-              <span className="bigcheck" aria-hidden>
-                ✓
-              </span>
+              <span className="bigcheck" aria-hidden>✓</span>
               <div>
                 <div className="ok-head">All sample data valid</div>
                 <div className="muted">
@@ -324,19 +470,12 @@ export default function App() {
               <h3>SEPP/LEP checks</h3>
             </div>
 
-            {assessment.status === "running" && (
-              <p className="muted">Running checks…</p>
-            )}
+            {assessment.status === "running" && <p className="muted">Running checks…</p>}
 
             {assessment.status === "error" && (
               <div className="card card--error" style={{ margin: 0 }}>
-                <p>
-                  <strong>Couldn’t run rules:</strong> {assessment.message}
-                </p>
-                <p className="muted">
-                  Ensure the engine exports an assess function and the wrapper
-                  returns {"{ ok, issues }"}.
-                </p>
+                <p><strong>Couldn’t run rules:</strong> {assessment.message}</p>
+                <p className="muted">Ensure the engine exports an assess function and the wrapper returns {"{ ok, issues }"}.</p>
               </div>
             )}
 
@@ -345,33 +484,27 @@ export default function App() {
                 {/* Verdict badge */}
                 <p style={{ margin: "6px 0 12px" }}>
                   <strong>Verdict:</strong>{" "}
-                  <span
-                    style={{
-                      padding: "2px 8px",
-                      borderRadius: 999,
-                      background:
-                        (assessment.result?.verdict || "NOT_EXEMPT") ===
-                        "LIKELY_EXEMPT"
-                          ? "#DCFCE7"
-                          : "#FEE2E2",
-                      color:
-                        (assessment.result?.verdict || "NOT_EXEMPT") ===
-                        "LIKELY_EXEMPT"
-                          ? "#166534"
-                          : "#991B1B",
-                    }}
-                  >
+                  <span style={{
+                    padding: "2px 8px",
+                    borderRadius: 999,
+                    background:
+                      (assessment.result?.verdict || "NOT_EXEMPT") === "LIKELY_EXEMPT"
+                        ? "#DCFCE7"
+                        : "#FEE2E2",
+                    color:
+                      (assessment.result?.verdict || "NOT_EXEMPT") === "LIKELY_EXEMPT"
+                        ? "#166534"
+                        : "#991B1B"
+                  }}>
                     {assessment.result?.verdict ||
-                      (Array.isArray(assessment.checks) &&
-                      assessment.checks.every((c) => c.ok)
+                      (Array.isArray(assessment.checks) && assessment.checks.every((c) => c.ok)
                         ? "LIKELY_EXEMPT"
                         : "NOT_EXEMPT")}
                   </span>
                 </p>
 
                 {/* Checks list */}
-                {Array.isArray(assessment.checks) &&
-                assessment.checks.length ? (
+                {Array.isArray(assessment.checks) && assessment.checks.length ? (
                   <ul className="issues" style={{ marginTop: 8 }}>
                     {assessment.checks.map((c, i) => (
                       <li key={c.id || i}>
@@ -398,6 +531,105 @@ export default function App() {
           )}
         </div>
       </div>
+
+      {/* ---- Add Sample Modal ---- */}
+      {showAdd && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.35)",
+            display: "grid",
+            placeItems: "center",
+            zIndex: 50
+          }}
+          onClick={() => setShowAdd(false)}
+        >
+          <div
+            className="card"
+            style={{ width: 520, maxWidth: "90vw" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="card-header" style={{ display: "flex", justifyContent: "space-between" }}>
+              <h3>Add sample</h3>
+              <button
+                onClick={() => setShowAdd(false)}
+                style={{ border: "none", background: "transparent", fontSize: 18, cursor: "pointer" }}
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="form-grid">
+              <label className="field">
+                <span className="label">Label *</span>
+                <input
+                  className="input"
+                  value={addForm.label}
+                  onChange={(e) => setAddForm({ ...addForm, label: e.target.value })}
+                  placeholder="e.g. Urban small lot — Lavington"
+                />
+              </label>
+
+              <label className="field">
+                <span className="label">Zone</span>
+                <input
+                  className="input"
+                  value={addForm.zone}
+                  onChange={(e) => setAddForm({ ...addForm, zone: e.target.value })}
+                  placeholder="R1 General Residential"
+                />
+              </label>
+
+              <label className="field">
+                <span className="label">Lot size (m²)</span>
+                <input
+                  type="number"
+                  step="1"
+                  className="input"
+                  value={addForm.lot_size_m2}
+                  onChange={(e) => setAddForm({ ...addForm, lot_size_m2: e.target.value })}
+                />
+              </label>
+
+              <label className="field">
+                <span className="label">Frontage (m)</span>
+                <input
+                  type="number"
+                  step="0.1"
+                  className="input"
+                  value={addForm.frontage_m}
+                  onChange={(e) => setAddForm({ ...addForm, frontage_m: e.target.value })}
+                />
+              </label>
+
+              <label className="field" style={{ gridColumn: "1 / -1" }}>
+                <input
+                  type="checkbox"
+                  checked={addForm.corner_lot}
+                  onChange={(e) => setAddForm({ ...addForm, corner_lot: e.target.checked })}
+                />{" "}
+                Corner lot
+              </label>
+            </div>
+
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 12 }}>
+              <button className="segbtn" onClick={() => handleAddSample(null)}>
+                Add
+              </button>
+              <button className="segbtn" onClick={() => handleAddSample("json")}>
+                Add & Export JSON
+              </button>
+              <button className="segbtn" onClick={() => handleAddSample("csv")}>
+                Add & Export CSV
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
