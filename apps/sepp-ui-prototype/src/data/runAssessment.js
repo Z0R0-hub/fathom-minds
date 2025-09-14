@@ -8,28 +8,33 @@ export function runAssessment(property, proposal) {
       return { ok: false, message: "Rules engine not found (src/engine/assess)." };
     }
 
-    // Call the engine. Adjust arg shape if your engine expects different keys.
-    const result = assess({ property, proposal });
+    const result = assess({ property, proposal }); // may be sync or async
 
-    // Try a few common shapes -> normalise to checks[]
-    const checks =
-      result?.checks ||
-      result?.items ||
-      result?.rules ||
-      [];
+    const finish = (r) => {
+      const checksRaw = r?.checks || r?.items || r?.rules || [];
 
-    // If engine returned booleans instead of objects, wrap them.
-    const normalised = checks.map((c, i) =>
-      typeof c === "boolean"
-        ? { id: `rule_${i + 1}`, ok: c, message: c ? "Pass" : "Fail" }
-        : {
-            id: c.id || c.code || `rule_${i + 1}`,
-            ok: !!(c.ok ?? c.pass ?? c.valid),
-            message: c.message || c.reason || c.title || "Rule",
-          }
-    );
+      const checks = checksRaw.map((c, i) => {
+        if (typeof c === "boolean") {
+          return { id: `rule_${i + 1}`, ok: c, message: c ? "Pass" : "Fail" };
+        }
+        if (typeof c === "string") {
+          return { id: `rule_${i + 1}`, ok: false, message: c };
+        }
+        return {
+          id: c.id || c.code || `rule_${i + 1}`,
+          ok: !!(c.ok ?? c.pass ?? c.valid),
+          message: c.message || c.reason || c.title || "Rule",
+        };
+      });
 
-    return { ok: true, result: { checks: normalised } };
+      return { ok: r?.ok !== false, result: { checks } };
+    };
+
+    // Support both sync and async assess()
+    if (result && typeof result.then === "function") {
+      return result.then(finish).catch((e) => ({ ok: false, message: e.message || String(e) }));
+    }
+    return finish(result);
   } catch (e) {
     return { ok: false, message: e.message || String(e) };
   }
