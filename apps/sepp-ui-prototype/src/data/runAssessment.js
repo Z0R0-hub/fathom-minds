@@ -1,6 +1,7 @@
 import * as mod from "../../../../src/engine/assess";
 
-// Call the FM-27 rules engine and normalise to { ok, result: { checks[] } }.
+const r1 = (n) => Math.round(n * 10) / 10;
+
 export function runAssessment(property, proposal) {
   try {
     const assess = mod.assess || mod.default;
@@ -8,48 +9,48 @@ export function runAssessment(property, proposal) {
       return { ok: false, message: "Rules engine not found (src/engine/assess)." };
     }
 
-    // Shape the proposal to what the engine expects.
+    // Map UI fields to the engine fields
     const input = {
       length: Number(proposal.length_m ?? proposal.length ?? 0),
       width: Number(proposal.width_m ?? proposal.width ?? 0),
       height: Number(proposal.height_m ?? proposal.height ?? 0),
-      setback: Number(
-        proposal.nearest_boundary_m ?? proposal.setback ?? proposal.setback_m ?? 0
-      ),
+      setback: Number(proposal.nearest_boundary_m ?? proposal.setback ?? 0),
+      // keep property around in case the engine uses it later
+      property,
     };
 
-    // Engine likely returns either an array of failing messages
-    // or an object with { issues } or { checks }.
-    const raw = assess(input);
+    // Call engine
+    const res = assess(input);
 
-    const issues =
-      Array.isArray(raw) ? raw :
-      Array.isArray(raw?.issues) ? raw.issues :
-      [];
+    // Compute pass/fail for each rule so the UI can show PASS/FAIL lines
+    const passArea = input.length * input.width <= 20;
+    const passHeight = input.height <= 3.0;
+    const passSetback = input.setback >= 0.5;
 
-    // Build PASS/FAIL checks for the three FM-27 rules.
     const checks = [
       {
         id: "area",
-        ok: !issues.some((m) => /area/i.test(m)),
-        message: issues.find((m) => /area/i.test(m)) || "Area ≤ 20 m²",
+        message: "Area ≤ 20 m²",
+        ok: passArea,
+        detail: passArea ? undefined : `Area ${r1(input.length * input.width)} m² exceeds 20 m²`,
       },
       {
         id: "height",
-        ok: !issues.some((m) => /height/i.test(m)),
-        message: issues.find((m) => /height/i.test(m)) || "Height ≤ 3.0 m",
+        message: "Height ≤ 3.0 m",
+        ok: passHeight,
+        detail: passHeight ? undefined : `Height ${r1(input.height)} m exceeds 3.0 m`,
       },
       {
         id: "setback",
-        ok: !issues.some((m) => /(boundary|setback)/i.test(m)),
-        message:
-          issues.find((m) => /(boundary|setback)/i.test(m)) ||
-          "Nearest boundary ≥ 0.5 m",
+        message: "Nearest boundary ≥ 0.5 m",
+        ok: passSetback,
+        detail: passSetback ? undefined : `Nearest boundary distance ${r1(input.setback)} m is under 0.5 m`,
       },
     ];
 
-    return { ok: true, result: { checks } };
+    // Pass through verdict/reasons if you want to show them later
+    return { ok: true, result: { checks, verdict: res?.verdict, reasons: res?.reasons } };
   } catch (e) {
-    return { ok: false, message: e.message || String(e) };
+    return { ok: false, message: e?.message || String(e) };
   }
 }
