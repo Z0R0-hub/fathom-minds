@@ -258,7 +258,7 @@ export default function App() {
       `}</style>
 
       <header className="app-header">
-        <h1 className="title">My name is JSON</h1>
+        <h1 className="title">SEPP Sheds and Patios</h1>
         <div className="badges">
           <Badge tone="neutral">Sprint 2</Badge>
           <Badge tone="green">Data: validated</Badge>
