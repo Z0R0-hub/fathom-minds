@@ -24,7 +24,7 @@ function IconButton({ onClick, title, children }) {
         border: "1px solid #ddd",
         background: "#fff",
         cursor: "pointer",
-        lineHeight: 1,
+        lineHeight: 1
       }}
       className="icon-btn"
     >
@@ -33,7 +33,7 @@ function IconButton({ onClick, title, children }) {
   );
 }
 
-/* Simple modal (no external libs) */
+/* Simple modal */
 function Modal({ open, onClose, children, title }) {
   if (!open) return null;
   return (
@@ -45,7 +45,7 @@ function Modal({ open, onClose, children, title }) {
         background: "rgba(0,0,0,.25)",
         display: "grid",
         placeItems: "center",
-        zIndex: 1000,
+        zIndex: 1000
       }}
     >
       <div
@@ -71,64 +71,60 @@ function toCSV(rows) {
   if (!rows?.length) return "";
   const cols = Object.keys(rows[0]);
   const esc = (v) =>
-    typeof v === "string"
-      ? `"${v.replace(/"/g, '""')}"`
-      : v === null || v === undefined
-      ? ""
-      : String(v);
-  const head = cols.join(",");
-  const body = rows.map((r) => cols.map((c) => esc(r[c])).join(",")).join("\n");
-  return `${head}\n${body}`;
+    typeof v === "string" ? `"${v.replace(/"/g, '""')}"` :
+    v === null || v === undefined ? "" : String(v);
+  return `${cols.join(",")}\n${rows.map(r => cols.map(c => esc(r[c])).join(",")).join("\n")}`;
 }
 
 export default function App() {
-  // Data from loader
+  // Data
   const [properties, setProperties] = useState([]);
   const [selectedId, setSelectedId] = useState("");
 
-  // Form inputs
+  // Structure inputs
   const [type, setType] = useState("shed");
   const [length, setLength] = useState(3);
   const [width, setWidth] = useState(3);
   const [height, setHeight] = useState(2.4);
   const [setback, setSetback] = useState(1.0);
 
-  // Loader state
+  // Loading & errors
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Rules engine assessment state
+  // Rules engine
   const [assessment, setAssessment] = useState({ status: "idle" });
 
-  // Add-sample modal state
+  // Add-sample modal
   const [addOpen, setAddOpen] = useState(false);
   const [newSample, setNewSample] = useState({
     label: "",
     zone: "R1 General Residential",
     lot_size_m2: "",
     frontage_m: "",
-    corner_lot: false,
+    corner_lot: false
   });
 
-  // Load + validate sample data at runtime, then merge with any user-saved samples
+  // Load base + user samples
   useEffect(() => {
     (async () => {
       try {
         const res = await loadProperties();
-        if (res.ok) {
-          const baseList = res.data.properties || [];
-          const userList =
-            JSON.parse(localStorage.getItem("userSamples") || "[]") || [];
-          // De-dup by id if any clash
-          const byId = new Map();
-          [...baseList, ...userList].forEach((p) => byId.set(p.id, p));
-          const list = Array.from(byId.values());
-          setProperties(list);
-          if (list.length) setSelectedId(list[0].id);
-          setError(null);
-        } else {
-          setError(res); // { message, issues[] }
-        }
+        if (!res.ok) throw new Error(res.message || "Failed to load properties");
+        const baseList = res.data.properties || [];
+
+        let userList = [];
+        try {
+          userList = JSON.parse(localStorage.getItem("userSamples") || "[]") || [];
+        } catch { userList = []; }
+
+        const byId = new Map();
+        [...baseList, ...userList].forEach((p) => byId.set(p.id, p));
+        const list = Array.from(byId.values());
+
+        setProperties(list);
+        if (list.length) setSelectedId(list[0].id);
+        setError(null);
       } catch (e) {
         setError({ message: e.message });
       } finally {
@@ -141,31 +137,26 @@ export default function App() {
   const safeNum = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
   const area = safeNum(length) * safeNum(width);
 
-  // Build a proposal object for the engine
   const proposal = useMemo(
     () => ({
-      kind: type, // "shed" | "patio"
+      kind: type,
       length_m: safeNum(length),
       width_m: safeNum(width),
       height_m: safeNum(height),
       nearest_boundary_m: safeNum(setback),
-      area_m2: area,
+      area_m2: area
     }),
     [type, length, width, height, setback, area]
   );
 
-  // Run rules engine whenever inputs or selected site change
+  // Run assessment when selection/inputs change
   useEffect(() => {
     if (!selected) return;
-
     let cancelled = false;
+
     (async () => {
       try {
         setAssessment({ status: "running" });
-
-        // Support both signatures:
-        //  - runAssessment(selected, proposal)
-        //  - runAssessment({ property: selected, proposal })
         const maybePromise =
           runAssessment.length >= 2
             ? runAssessment(selected, proposal)
@@ -176,36 +167,22 @@ export default function App() {
 
         if (out && out.ok) {
           const checks =
-            out.checks ||
-            out.issues ||
-            out.result?.checks ||
-            out.result?.issues ||
-            [];
-
-          // Compute a verdict if engine didn't provide one
+            out.checks || out.issues || out.result?.checks || out.result?.issues || [];
           const verdict =
             out.result?.verdict ||
             (Array.isArray(checks) && checks.every((c) => !!(c.ok ?? c.pass ?? c.valid))
               ? "LIKELY_EXEMPT"
               : "NOT_EXEMPT");
-
           setAssessment({ status: "done", checks, result: { verdict } });
         } else {
-          setAssessment({
-            status: "error",
-            message: out?.message || "Unknown engine error",
-          });
+          throw new Error(out?.message || "Unknown engine error");
         }
       } catch (e) {
-        if (!cancelled) {
-          setAssessment({ status: "error", message: e.message || String(e) });
-        }
+        if (!cancelled) setAssessment({ status: "error", message: e.message || String(e) });
       }
     })();
 
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [selected, proposal]);
 
   /* ---------- Add Sample: save, persist, download ---------- */
@@ -219,75 +196,65 @@ export default function App() {
       zone: trimmed(newSample.zone) || "R1 General Residential",
       lot_size_m2: Number(newSample.lot_size_m2) || 0,
       frontage_m: Number(newSample.frontage_m) || 0,
-      corner_lot: !!newSample.corner_lot,
+      corner_lot: !!newSample.corner_lot
     };
 
-    // Update local state
+    // Update state & selection
     const next = [sample, ...properties];
     setProperties(next);
     setSelectedId(sample.id);
 
-    // Persist to localStorage (acts like lightweight DB in the browser)
-    const existing = JSON.parse(localStorage.getItem("userSamples") || "[]");
+    // Persist to localStorage
+    let existing = [];
+    try { existing = JSON.parse(localStorage.getItem("userSamples") || "[]") || []; } catch {}
     localStorage.setItem("userSamples", JSON.stringify([sample, ...existing]));
 
-    // Offer downloads of the whole combined list
+    // Prepare rows for export
     const allRows = next.map((p) => ({
       id: p.id,
       label: p.label,
       zone: p.zone,
       lot_size_m2: p.lot_size_m2,
       frontage_m: p.frontage_m,
-      corner_lot: p.corner_lot,
+      corner_lot: p.corner_lot
     }));
-    const jsonBlob = new Blob([JSON.stringify({ properties: allRows }, null, 2)], {
-      type: "application/json",
-    });
-    const csvBlob = new Blob([toCSV(allRows)], { type: "text/csv" });
 
-    // Attach to hidden anchors for immediate download
+    // Download JSON
+    const jsonBlob = new Blob([JSON.stringify({ properties: allRows }, null, 2)], {
+      type: "application/json"
+    });
     const a1 = document.createElement("a");
     a1.href = URL.createObjectURL(jsonBlob);
     a1.download = "properties.json";
     a1.click();
     URL.revokeObjectURL(a1.href);
 
+    // Download CSV
+    const csvBlob = new Blob([toCSV(allRows)], { type: "text/csv" });
     const a2 = document.createElement("a");
     a2.href = URL.createObjectURL(csvBlob);
     a2.download = "properties.csv";
     a2.click();
     URL.revokeObjectURL(a2.href);
 
+    // Reset form + close
     setAddOpen(false);
     setNewSample({
       label: "",
       zone: "R1 General Residential",
       lot_size_m2: "",
       frontage_m: "",
-      corner_lot: false,
+      corner_lot: false
     });
   }
 
-  // --------- Normal UI ----------
   return (
     <main className="container">
-      {/* Inline CSS overrides so the + button shows beside the select */}
+      {/* Make select and + share a row reliably even if App.css forces width */}
       <style>{`
-        /* Make the select share the row with the + button */
-        .field > div {           /* the wrapper div around select + button */
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          width: 100%;
-        }
-        .select {
-          flex: 1 1 auto;       /* grow to available space */
-          width: auto;          /* override any width:100% */
-          min-width: 0;         /* prevent overflow in flex */
-        }
-        .icon-btn {
-          flex: 0 0 auto;       /* keep the button visible */
-        }
+        .choose-row { display: flex; align-items: center; gap: 8px; width: 100%; }
+        .choose-row .select { flex: 1 1 auto; width: auto; min-width: 0; }
+        .icon-btn { flex: 0 0 auto; }
       `}</style>
 
       <header className="app-header">
@@ -299,9 +266,8 @@ export default function App() {
       </header>
 
       <div className="grid-2">
-        {/* LEFT COLUMN */}
+        {/* LEFT */}
         <div className="col">
-          {/* Property card */}
           <section className="card">
             <div className="card-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <h3 style={{ margin: 0 }}>Site / Sample property</h3>
@@ -309,7 +275,7 @@ export default function App() {
 
             <label className="field">
               <span className="label">Choose sample</span>
-              <div>
+              <div className="choose-row">
                 <select
                   value={selectedId}
                   onChange={(e) => setSelectedId(e.target.value)}
@@ -337,7 +303,6 @@ export default function App() {
             <p className="muted">All distances in metres (m).</p>
           </section>
 
-          {/* Proposed structure card */}
           <section className="card">
             <div className="card-header">
               <h3>Proposed structure</h3>
@@ -417,9 +382,8 @@ export default function App() {
           </section>
         </div>
 
-        {/* RIGHT COLUMN */}
+        {/* RIGHT */}
         <div className="col">
-          {/* Data validation status */}
           <section className="card">
             <div className="card-header">
               <h3>Data validation</h3>
@@ -437,7 +401,6 @@ export default function App() {
             <p className="muted">Prototype rules engine runs live below.</p>
           </section>
 
-          {/* Rules assessment */}
           <section className="card">
             <div className="card-header">
               <h3>SEPP/LEP checks</h3>
@@ -454,7 +417,6 @@ export default function App() {
 
             {assessment.status === "done" && (
               <>
-                {/* Verdict badge */}
                 <p style={{ margin: "6px 0 12px" }}>
                   <strong>Verdict:</strong>{" "}
                   <span style={{
@@ -463,14 +425,10 @@ export default function App() {
                     background: (assessment.result?.verdict || "NOT_EXEMPT") === "LIKELY_EXEMPT" ? "#DCFCE7" : "#FEE2E2",
                     color: (assessment.result?.verdict || "NOT_EXEMPT") === "LIKELY_EXEMPT" ? "#166534" : "#991B1B"
                   }}>
-                    {assessment.result?.verdict ||
-                      (Array.isArray(assessment.checks) && assessment.checks.every((c) => c.ok)
-                        ? "LIKELY_EXEMPT"
-                        : "NOT_EXEMPT")}
+                    {assessment.result?.verdict}
                   </span>
                 </p>
 
-                {/* Checks list */}
                 {Array.isArray(assessment.checks) && assessment.checks.length ? (
                   <ul className="issues" style={{ marginTop: 8 }}>
                     {assessment.checks.map((c, i) => (
@@ -487,7 +445,6 @@ export default function App() {
             )}
           </section>
 
-          {/* Raw JSON details */}
           {selected && (
             <section className="card">
               <details>
@@ -562,8 +519,8 @@ export default function App() {
           </div>
 
           <p className="muted" style={{ gridColumn: "1 / -1", marginTop: 8 }}>
-            Saved samples persist locally (browser storage). The downloaded <code>properties.json</code> /
-            <code>properties.csv</code> can act as a simple “database” file and be checked into the repo if needed.
+            Saved samples persist locally (browser storage). The downloaded <code>properties.json</code> and
+            <code> properties.csv</code> contain the combined list.
           </p>
         </form>
       </Modal>
