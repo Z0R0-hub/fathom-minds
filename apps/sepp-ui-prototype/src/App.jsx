@@ -32,6 +32,8 @@ function IconButton({ onClick, title, children }) {
     </button>
   );
 }
+
+/* Simple modal (no external libs) */
 function Modal({ open, onClose, children, title }) {
   if (!open) return null;
   return (
@@ -64,7 +66,7 @@ function Modal({ open, onClose, children, title }) {
   );
 }
 
-/* ---------- csv helper ---------- */
+/* CSV helper */
 function toCSV(rows) {
   if (!rows?.length) return "";
   const cols = Object.keys(rows[0]);
@@ -79,26 +81,26 @@ function toCSV(rows) {
   return `${head}\n${body}`;
 }
 
-/* ======================================================================== */
-
 export default function App() {
-  /* data */
+  // Data from loader
   const [properties, setProperties] = useState([]);
   const [selectedId, setSelectedId] = useState("");
 
-  /* form inputs */
+  // Form inputs
   const [type, setType] = useState("shed");
   const [length, setLength] = useState(3);
   const [width, setWidth] = useState(3);
   const [height, setHeight] = useState(2.4);
   const [setback, setSetback] = useState(1.0);
 
-  /* loader + rules state */
+  // Loader state
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Rules engine assessment state
   const [assessment, setAssessment] = useState({ status: "idle" });
 
-  /* add-sample modal state */
+  // Add-sample modal state
   const [addOpen, setAddOpen] = useState(false);
   const [newSample, setNewSample] = useState({
     label: "",
@@ -108,14 +110,16 @@ export default function App() {
     corner_lot: false,
   });
 
-  /* load base samples + merge with user-saved ones */
+  // Load + validate sample data at runtime, then merge with any user-saved samples
   useEffect(() => {
     (async () => {
       try {
         const res = await loadProperties();
         if (res.ok) {
           const baseList = res.data.properties || [];
-          const userList = JSON.parse(localStorage.getItem("userSamples") || "[]") || [];
+          const userList =
+            JSON.parse(localStorage.getItem("userSamples") || "[]") || [];
+          // De-dup by id if any clash
           const byId = new Map();
           [...baseList, ...userList].forEach((p) => byId.set(p.id, p));
           const list = Array.from(byId.values());
@@ -123,7 +127,7 @@ export default function App() {
           if (list.length) setSelectedId(list[0].id);
           setError(null);
         } else {
-          setError(res);
+          setError(res); // { message, issues[] }
         }
       } catch (e) {
         setError({ message: e.message });
@@ -137,10 +141,10 @@ export default function App() {
   const safeNum = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
   const area = safeNum(length) * safeNum(width);
 
-  /* proposal for rules engine */
+  // Build a proposal object for the engine
   const proposal = useMemo(
     () => ({
-      kind: type,
+      kind: type, // "shed" | "patio"
       length_m: safeNum(length),
       width_m: safeNum(width),
       height_m: safeNum(height),
@@ -150,7 +154,7 @@ export default function App() {
     [type, length, width, height, setback, area]
   );
 
-  /* run engine when inputs/site change */
+  // Run rules engine whenever inputs or selected site change
   useEffect(() => {
     if (!selected) return;
 
@@ -159,6 +163,9 @@ export default function App() {
       try {
         setAssessment({ status: "running" });
 
+        // Support both signatures:
+        //  - runAssessment(selected, proposal)
+        //  - runAssessment({ property: selected, proposal })
         const maybePromise =
           runAssessment.length >= 2
             ? runAssessment(selected, proposal)
@@ -175,6 +182,7 @@ export default function App() {
             out.result?.issues ||
             [];
 
+          // Compute a verdict if engine didn't provide one
           const verdict =
             out.result?.verdict ||
             (Array.isArray(checks) && checks.every((c) => !!(c.ok ?? c.pass ?? c.valid))
@@ -183,10 +191,15 @@ export default function App() {
 
           setAssessment({ status: "done", checks, result: { verdict } });
         } else {
-          setAssessment({ status: "error", message: out?.message || "Unknown engine error" });
+          setAssessment({
+            status: "error",
+            message: out?.message || "Unknown engine error",
+          });
         }
       } catch (e) {
-        if (!cancelled) setAssessment({ status: "error", message: e.message || String(e) });
+        if (!cancelled) {
+          setAssessment({ status: "error", message: e.message || String(e) });
+        }
       }
     })();
 
@@ -195,7 +208,7 @@ export default function App() {
     };
   }, [selected, proposal]);
 
-  /* create + persist a new sample, then download JSON/CSV */
+  /* ---------- Add Sample: save, persist, download ---------- */
   function handleCreateSample(e) {
     e.preventDefault();
     const trimmed = (s) => String(s || "").trim();
@@ -209,13 +222,16 @@ export default function App() {
       corner_lot: !!newSample.corner_lot,
     };
 
+    // Update local state
     const next = [sample, ...properties];
     setProperties(next);
     setSelectedId(sample.id);
 
+    // Persist to localStorage (acts like lightweight DB in the browser)
     const existing = JSON.parse(localStorage.getItem("userSamples") || "[]");
     localStorage.setItem("userSamples", JSON.stringify([sample, ...existing]));
 
+    // Offer downloads of the whole combined list
     const allRows = next.map((p) => ({
       id: p.id,
       label: p.label,
@@ -224,12 +240,12 @@ export default function App() {
       frontage_m: p.frontage_m,
       corner_lot: p.corner_lot,
     }));
-
     const jsonBlob = new Blob([JSON.stringify({ properties: allRows }, null, 2)], {
       type: "application/json",
     });
     const csvBlob = new Blob([toCSV(allRows)], { type: "text/csv" });
 
+    // Attach to hidden anchors for immediate download
     const a1 = document.createElement("a");
     a1.href = URL.createObjectURL(jsonBlob);
     a1.download = "properties.json";
@@ -252,52 +268,28 @@ export default function App() {
     });
   }
 
-  /* ---------- loading / error ---------- */
-  if (loading) {
-    return (
-      <main className="container">
-        <header className="app-header">
-          <h1 className="title">SEPP Sheds &amp; Patios</h1>
-          <div className="badges">
-            <Badge tone="neutral">Sprint 2</Badge>
-            <Badge tone="neutral">Loading…</Badge>
-          </div>
-        </header>
-        <div className="card"><p>Loading sample data…</p></div>
-      </main>
-    );
-  }
-
-  if (error) {
-    return (
-      <main className="container">
-        <header className="app-header">
-          <h1 className="title">SEPP Sheds &amp; Patios</h1>
-          <div className="badges">
-            <Badge tone="neutral">Sprint 2</Badge>
-            <Badge tone="red">Data: invalid</Badge>
-          </div>
-        </header>
-
-        <div className="card card--error">
-          <h3>Data validation failed</h3>
-          <p>{error.message || "Invalid data."}</p>
-          {error.issues && (
-            <ul className="issues">
-              {error.issues.map((line, i) => (
-                <li key={i}>{line}</li>
-              ))}
-            </ul>
-          )}
-          <p className="muted">Fix <code>public/data/properties.json</code> to continue.</p>
-        </div>
-      </main>
-    );
-  }
-
-  /* ---------- normal UI ---------- */
+  // --------- Normal UI ----------
   return (
     <main className="container">
+      {/* Inline CSS overrides so the + button shows beside the select */}
+      <style>{`
+        /* Make the select share the row with the + button */
+        .field > div {           /* the wrapper div around select + button */
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          width: 100%;
+        }
+        .select {
+          flex: 1 1 auto;       /* grow to available space */
+          width: auto;          /* override any width:100% */
+          min-width: 0;         /* prevent overflow in flex */
+        }
+        .icon-btn {
+          flex: 0 0 auto;       /* keep the button visible */
+        }
+      `}</style>
+
       <header className="app-header">
         <h1 className="title">SEPP Sheds &amp; Patios</h1>
         <div className="badges">
@@ -315,15 +307,13 @@ export default function App() {
               <h3 style={{ margin: 0 }}>Site / Sample property</h3>
             </div>
 
-            {/* >>> layout fix so the + button is always visible */}
             <label className="field">
               <span className="label">Choose sample</span>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%" }}>
+              <div>
                 <select
                   value={selectedId}
                   onChange={(e) => setSelectedId(e.target.value)}
                   className="select"
-                  style={{ flex: "1 1 auto" }}
                 >
                   {properties.map((p) => (
                     <option key={p.id} value={p.id}>
@@ -347,7 +337,7 @@ export default function App() {
             <p className="muted">All distances in metres (m).</p>
           </section>
 
-          {/* Proposed structure */}
+          {/* Proposed structure card */}
           <section className="card">
             <div className="card-header">
               <h3>Proposed structure</h3>
@@ -429,7 +419,7 @@ export default function App() {
 
         {/* RIGHT COLUMN */}
         <div className="col">
-          {/* Data validation */}
+          {/* Data validation status */}
           <section className="card">
             <div className="card-header">
               <h3>Data validation</h3>
@@ -438,7 +428,9 @@ export default function App() {
               <span className="bigcheck" aria-hidden>✓</span>
               <div>
                 <div className="ok-head">All sample data valid</div>
-                <div className="muted">Validated on load with JSON Schema (Draft-07) + AJV.</div>
+                <div className="muted">
+                  Validated on load with JSON Schema (Draft-07) + AJV.
+                </div>
               </div>
             </div>
             <hr className="rule" />
@@ -462,18 +454,15 @@ export default function App() {
 
             {assessment.status === "done" && (
               <>
+                {/* Verdict badge */}
                 <p style={{ margin: "6px 0 12px" }}>
                   <strong>Verdict:</strong>{" "}
-                  <span
-                    style={{
-                      padding: "2px 8px",
-                      borderRadius: 999,
-                      background:
-                        (assessment.result?.verdict || "NOT_EXEMPT") === "LIKELY_EXEMPT" ? "#DCFCE7" : "#FEE2E2",
-                      color:
-                        (assessment.result?.verdict || "NOT_EXEMPT") === "LIKELY_EXEMPT" ? "#166534" : "#991B1B",
-                    }}
-                  >
+                  <span style={{
+                    padding: "2px 8px",
+                    borderRadius: 999,
+                    background: (assessment.result?.verdict || "NOT_EXEMPT") === "LIKELY_EXEMPT" ? "#DCFCE7" : "#FEE2E2",
+                    color: (assessment.result?.verdict || "NOT_EXEMPT") === "LIKELY_EXEMPT" ? "#166534" : "#991B1B"
+                  }}>
                     {assessment.result?.verdict ||
                       (Array.isArray(assessment.checks) && assessment.checks.every((c) => c.ok)
                         ? "LIKELY_EXEMPT"
@@ -481,11 +470,13 @@ export default function App() {
                   </span>
                 </p>
 
+                {/* Checks list */}
                 {Array.isArray(assessment.checks) && assessment.checks.length ? (
                   <ul className="issues" style={{ marginTop: 8 }}>
                     {assessment.checks.map((c, i) => (
                       <li key={c.id || i}>
-                        <strong>{c.ok ? "PASS" : "FAIL"}:</strong> {c.message || c.code || "See details"}
+                        <strong>{c.ok ? "PASS" : "FAIL"}:</strong>{" "}
+                        {c.message || c.code || "See details"}
                       </li>
                     ))}
                   </ul>
