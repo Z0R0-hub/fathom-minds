@@ -9,5 +9,13 @@
 		"test:watch": "vitest",
 		"typecheck": "tsc -p tsconfig.json --noEmit"
 	},
-	"type": "module"
+	"type": "module",
+	"pnpm": {
+		"allowedScripts": {
+			"esbuild": "true"
+		},
+		"onlyBuiltDependencies": [
+			"esbuild"
+		]
+	}
 }
