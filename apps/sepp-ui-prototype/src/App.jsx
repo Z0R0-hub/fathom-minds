@@ -263,7 +263,7 @@ export default function App() {
     <main className="container">
       {/* Make select and + share a row reliably even if App.css forces width */}
       <style>{`
-        .choose-row { display: flex; align-items: center; gap: 8px; width: 100%; }
+        .choose-row { display: flex, align-items: center, gap: 8px, width: 100% }
         .choose-row .select { flex: 1 1 auto; width: auto; min-width: 0; }
         .icon-btn { flex: 0 0 auto; }
       `}</style>
