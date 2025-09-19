@@ -43,4 +43,9 @@ describe('overlayFromRaw', () => {
     expect(overlayFromRaw({ zone: ' r3 ' }).zone).toBe('R3');
     expect(overlayFromRaw({ zone: 'X9' }).zone).toBe('UNKNOWN');
   });
+
+  it('maps long zone labels to short codes', () => {
+    const snap = overlayFromRaw({ zone: 'R1 General Residential' });
+    expect(snap.zone).toBe('R1');
+  });
 });
