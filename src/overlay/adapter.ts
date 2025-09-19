@@ -1,4 +1,5 @@
 import type { OverlaySnapshot, Zone, BAL, FloodCategory } from './types';
+import { ZONE_LABEL_TO_CODE } from './zoneMap'; 
 
 type RawOverlays = Record<string, unknown>;
 
@@ -16,7 +17,8 @@ const ZONE_MAP: Record<string, Zone> = {
 
 function normZone(raw: unknown): Zone {
   const s = String(raw ?? '').trim().toUpperCase();
-  return (ZONE_MAP[s] ?? 'UNKNOWN') as Zone;
+  const mapped = ZONE_LABEL_TO_CODE[s] ?? s;     // map label → short code if known
+  return (ZONE_MAP[mapped] ?? 'UNKNOWN') as Zone;
 }
 
 function normBAL(raw: unknown): BAL {
