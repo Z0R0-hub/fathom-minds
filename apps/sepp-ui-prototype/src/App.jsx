@@ -3,6 +3,9 @@ import { loadProperties } from "./data/loadProperties";
 import { runAssessment } from "./data/runAssessment";
 import "./App.css";
 
+/** Friendly zone names (R1 → “General Residential”, etc.) */
+import { getZoneFriendlyName } from "../../../src/overlay/zoneNames";
+
 function Badge({ tone = "neutral", children }) {
   return <span className={`badge badge--${tone}`}>{children}</span>;
 }
@@ -164,7 +167,15 @@ export default function App() {
           // Use engine output directly; do not re-derive verdict in the UI
           const checks = out.result?.checks || out.checks || out.issues || [];
           const verdict = out.result?.verdict ?? "NOT_EXEMPT";
-          setAssessment({ status: "done", checks, result: { verdict } });
+
+          // Keep any overlay snapshot/findings if the engine surfaced them
+          const overlay =
+            out.result?.overlay ||
+            out.overlay ||
+            out.result?.overlays ||
+            null;
+
+          setAssessment({ status: "done", checks, result: { verdict, overlay } });
         } else {
           throw new Error(out?.message || "Unknown engine error");
         }
@@ -238,6 +249,15 @@ export default function App() {
       corner_lot: false
     });
   }
+
+  /** Pull a single overlay snapshot object (if present) from assessment */
+  const overlaySnap = useMemo(() => {
+    const o = assessment?.result?.overlay || assessment?.overlay || null;
+    if (!o) return null;
+    // Accept either the snapshot itself or { snapshot, reasons, ok }
+    if (o.snapshot) return o.snapshot;
+    return o;
+  }, [assessment]);
 
   return (
     <main className="container">
@@ -392,6 +412,49 @@ export default function App() {
             <hr className="rule" />
             <p className="muted">Prototype rules engine runs live below.</p>
           </section>
+
+          {/* Overlays snapshot (zone/BAL/flood) if available */}
+          {overlaySnap && (
+            <section className="card">
+              <div className="card-header">
+                <h3>Overlays</h3>
+              </div>
+              <div className="chips" style={{ flexWrap: "wrap" }}>
+                {overlaySnap.zone && overlaySnap.zone !== 'UNKNOWN' ? (
+                  <Chip>
+                    {overlaySnap.zone} — {getZoneFriendlyName(overlaySnap.zone)}
+                  </Chip>
+                ) : (
+                  <Chip>Zone: Unknown</Chip>
+                )}
+
+                {overlaySnap.bal && overlaySnap.bal !== 'UNKNOWN' ? (
+                  <Chip>BAL: {overlaySnap.bal}</Chip>
+                ) : (
+                  <Chip>BAL: Unknown</Chip>
+                )}
+
+                {overlaySnap.floodCategory && overlaySnap.floodCategory !== 'UNKNOWN' ? (
+                  <Chip>
+                    {overlaySnap.floodCategory === 'NONE'
+                      ? 'Flood: None'
+                      : `Flood: ${overlaySnap.floodCategory}`}
+                  </Chip>
+                ) : (
+                  <Chip>Flood: Unknown</Chip>
+                )}
+
+                {typeof overlaySnap.floodControlLot === 'boolean' && (
+                  <Chip>
+                    {overlaySnap.floodControlLot ? 'Flood control/ hazard area' : 'Not a flood control lot'}
+                  </Chip>
+                )}
+              </div>
+              <p className="muted" style={{ marginTop: 8 }}>
+                These inputs contribute to gating (zone scope, bushfire category, and flood hazards).
+              </p>
+            </section>
+          )}
 
           <section className="card" aria-live="polite">
             <div className="card-header">
