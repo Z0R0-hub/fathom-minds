@@ -157,22 +157,13 @@ export default function App() {
     (async () => {
       try {
         setAssessment({ status: "running" });
-        const maybePromise =
-          runAssessment.length >= 2
-            ? runAssessment(selected, proposal)
-            : runAssessment({ property: selected, proposal });
-
-        const out = await maybePromise;
+        const out = await runAssessment(selected, proposal);
         if (cancelled) return;
 
         if (out && out.ok) {
-          const checks =
-            out.checks || out.issues || out.result?.checks || out.result?.issues || [];
-          const verdict =
-            out.result?.verdict ||
-            (Array.isArray(checks) && checks.every((c) => !!(c.ok ?? c.pass ?? c.valid))
-              ? "LIKELY_EXEMPT"
-              : "NOT_EXEMPT");
+          // Use engine output directly; do not re-derive verdict in the UI
+          const checks = out.result?.checks || out.checks || out.issues || [];
+          const verdict = out.result?.verdict ?? "NOT_EXEMPT";
           setAssessment({ status: "done", checks, result: { verdict } });
         } else {
           throw new Error(out?.message || "Unknown engine error");
@@ -260,8 +251,9 @@ export default function App() {
       <header className="app-header">
         <h1 className="title">SEPP Sheds and Patios</h1>
         <div className="badges">
-          <Badge tone="neutral">Sprint 2</Badge>
+          <Badge tone="neutral">Sprint 3</Badge>
           <Badge tone="green">Data: validated</Badge>
+          <Badge tone="neutral">Ruleset: overlays enabled</Badge>
         </div>
       </header>
 
@@ -401,7 +393,7 @@ export default function App() {
             <p className="muted">Prototype rules engine runs live below.</p>
           </section>
 
-          <section className="card">
+          <section className="card" aria-live="polite">
             <div className="card-header">
               <h3>SEPP/LEP checks</h3>
             </div>
