@@ -21,4 +21,26 @@ describe('overlayFromRaw', () => {
     expect(snap.floodCategory).toBe('UNKNOWN');
     expect(typeof snap.floodControlLot).toBe('boolean');
   });
+
+  it('normalizes BAL variants and spacing', () => {
+    expect(overlayFromRaw({ BAL_RATING: 'LOW' }).bal).toBe('BAL-LOW');
+    expect(overlayFromRaw({ BAL_RATING: 'BALLOW' }).bal).toBe('BAL-LOW');
+    expect(overlayFromRaw({ BAL_RATING: 'FZ' }).bal).toBe('BAL-FZ');
+    expect(overlayFromRaw({ BAL_RATING: 'BALFZ' }).bal).toBe('BAL-FZ');
+    expect(overlayFromRaw({ BUSHFIRE_BAL: 'BAL 12.5' }).bal).toBe('BAL-12.5');
+  });
+
+  it('derives floodControlLot from strings and booleans', () => {
+    // positive cases
+    expect(overlayFromRaw({ FLOOD_CONTROL: 'yes' }).floodControlLot).toBe(true);
+    expect(overlayFromRaw({ FLOOD: true }).floodControlLot).toBe(true);
+    // negative cases
+    expect(overlayFromRaw({ FLOOD_CONTROL: 'no' }).floodControlLot).toBe(false);
+    expect(overlayFromRaw({ FLOOD: false }).floodControlLot).toBe(false);
+  });
+
+  it('maps zone case/spacing and unknowns safely', () => {
+    expect(overlayFromRaw({ zone: ' r3 ' }).zone).toBe('R3');
+    expect(overlayFromRaw({ zone: 'X9' }).zone).toBe('UNKNOWN');
+  });
 });
