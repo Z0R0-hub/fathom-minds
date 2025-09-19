@@ -1,5 +1,4 @@
 // Safe to extend anytime as more councils/zones are onboarded.
-
 export const ZONE_CODE_TO_LABEL: Record<string, string> = {
   R1: 'General Residential',
   R2: 'Low Density Residential',
@@ -14,8 +13,14 @@ export const ZONE_CODE_TO_LABEL: Record<string, string> = {
   UNKNOWN: 'Unknown zone',
 };
 
-/** Returns a friendly name for a zone code, falling back to the code itself. */
+/**
+ * Returns a friendly name for a zone code.
+ * Falls back to "Unknown zone" when the input is empty or unrecognised.
+ */
 export function getZoneFriendlyName(code?: string): string {
-  const k = String(code ?? '').toUpperCase();
-  return ZONE_CODE_TO_LABEL[k] ?? k || 'Unknown zone';
+  const k = String(code ?? '').trim().toUpperCase();
+  if (!k) return 'Unknown zone';
+
+  const label = ZONE_CODE_TO_LABEL[k];
+  return label ? label : 'Unknown zone';
 }
