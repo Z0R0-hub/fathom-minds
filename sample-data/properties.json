@@ -3,32 +3,437 @@
     {
       "id": "ALB-001",
       "label": "Urban small lot — Lavington",
+      "parcel_id": "DP123456 Lot 21",
+      "address": "12 Example Street, Lavington NSW",
+      "locality": "Lavington",
+      "latitude": -36.0435,
+      "longitude": 146.9498,
       "zone": "R1 General Residential",
+      "bal": "UNKNOWN",
+      "floodCategory": "UNKNOWN",
+      "floodControlLot": false,
       "lot_size_m2": 420,
       "frontage_m": 12.0,
       "corner_lot": false,
-      "setbacks_m": { "front": 5.5, "left": 1.0, "right": 1.0, "rear": 1.0},
+      "setbacks_m": {
+        "front": 5.5,
+        "left": 1.0,
+        "right": 1.0,
+        "rear": 1.0
+      },
+      "prechecks": {
+        "heritage_item": false,
+        "heritage_conservation_area": false,
+        "environmentally_sensitive": false,
+        "critical_habitat": false,
+        "asbestos_management_area": false
+      },
+      "services": {
+        "near_easement": false,
+        "above_sewer_main": false,
+        "distance_to_dwelling_m": 6.0
+      },
+      "overlay_source": "pending-portal",
       "notes": "Typical small lot behind dwelling."
     },
     {
       "id": "ALB-002",
       "label": "Suburban corner lot — East Albury",
+      "parcel_id": "DP117890 Lot 2",
+      "address": "3 Sample Avenue, East Albury NSW",
+      "locality": "East Albury",
+      "latitude": -36.0704,
+      "longitude": 146.9371,
       "zone": "R1 General Residential",
+      "bal": "UNKNOWN",
+      "floodCategory": "UNKNOWN",
+      "floodControlLot": false,
       "lot_size_m2": 720,
       "frontage_m": 18.0,
       "corner_lot": true,
-      "setbacks_m": { "front": 6.0, "secondary_front": 3.0, "left": 1.5, "right": 2.0, "rear": 5.0 },
+      "setbacks_m": {
+        "front": 6.0,
+        "secondary_front": 3.0,
+        "left": 1.5,
+        "right": 2.0,
+        "rear": 5.0
+      },
+      "prechecks": {
+        "heritage_item": false,
+        "heritage_conservation_area": false,
+        "environmentally_sensitive": false,
+        "critical_habitat": false,
+        "asbestos_management_area": false
+      },
+      "services": {
+        "near_easement": true,
+        "above_sewer_main": false,
+        "distance_to_dwelling_m": 8.0
+      },
+      "overlay_source": "pending-portal",
       "notes": "Corner geometry for boundary-distance tests."
     },
     {
       "id": "ALB-003",
       "label": "Large lot — Thurgoona/Wirlinga fringe",
+      "parcel_id": "DP200345 Lot 102",
+      "address": "55 Lifestyle Road, Thurgoona NSW",
+      "locality": "Thurgoona",
+      "latitude": -36.0502,
+      "longitude": 147.0068,
       "zone": "R5 Large Lot Residential",
+      "bal": "UNKNOWN",
+      "floodCategory": "UNKNOWN",
+      "floodControlLot": false,
       "lot_size_m2": 2400,
       "frontage_m": 30.0,
       "corner_lot": false,
-      "setbacks_m": { "front": 10.0, "left": 5.0, "right": 5.0, "rear": 10.0 },
+      "setbacks_m": {
+        "front": 10.0,
+        "left": 5.0,
+        "right": 5.0,
+        "rear": 10.0
+      },
+      "prechecks": {
+        "heritage_item": false,
+        "heritage_conservation_area": false,
+        "environmentally_sensitive": false,
+        "critical_habitat": false,
+        "asbestos_management_area": false
+      },
+      "services": {
+        "near_easement": false,
+        "above_sewer_main": false,
+        "distance_to_dwelling_m": 18.0
+      },
+      "overlay_source": "pending-portal",
       "notes": "Roomy site for larger-but-exempt scenarios."
+    },
+    {
+      "id": "ALB-004",
+      "label": "Rural lifestyle parcel — Wirlinga",
+      "parcel_id": "DP210045 Lot 305",
+      "address": "210 Riverbend Drive, Wirlinga NSW",
+      "locality": "Wirlinga",
+      "latitude": -36.0268,
+      "longitude": 147.035,
+      "zone": "R5 Large Lot Residential",
+      "bal": "UNKNOWN",
+      "floodCategory": "UNKNOWN",
+      "floodControlLot": false,
+      "lot_size_m2": 3200,
+      "frontage_m": 38.0,
+      "corner_lot": false,
+      "setbacks_m": {
+        "front": 12.0,
+        "left": 7.0,
+        "right": 7.0,
+        "rear": 15.0
+      },
+      "prechecks": {
+        "heritage_item": false,
+        "heritage_conservation_area": false,
+        "environmentally_sensitive": false,
+        "critical_habitat": false,
+        "asbestos_management_area": false
+      },
+      "services": {
+        "near_easement": false,
+        "above_sewer_main": false,
+        "distance_to_dwelling_m": 22.0
+      },
+      "overlay_source": "pending-portal",
+      "notes": "Deep lot suited to detached outbuildings."
+    },
+    {
+      "id": "ALB-005",
+      "label": "Village infill lot — East Albury",
+      "parcel_id": "DP103452 Lot 11",
+      "address": "48 Hillcrest Street, East Albury NSW",
+      "locality": "East Albury",
+      "latitude": -36.0679,
+      "longitude": 146.9513,
+      "zone": "R2 Low Density Residential",
+      "bal": "UNKNOWN",
+      "floodCategory": "UNKNOWN",
+      "floodControlLot": false,
+      "lot_size_m2": 610,
+      "frontage_m": 17.0,
+      "corner_lot": false,
+      "setbacks_m": {
+        "front": 7.0,
+        "left": 1.2,
+        "right": 2.5,
+        "rear": 4.5
+      },
+      "prechecks": {
+        "heritage_item": false,
+        "heritage_conservation_area": false,
+        "environmentally_sensitive": false,
+        "critical_habitat": false,
+        "asbestos_management_area": false
+      },
+      "services": {
+        "near_easement": true,
+        "above_sewer_main": false,
+        "distance_to_dwelling_m": 4.0
+      },
+      "overlay_source": "pending-portal",
+      "notes": "Gentle slope, typical for infill patio scenarios."
+    },
+    {
+      "id": "ALB-006",
+      "label": "Mixed-use pad — Albury CBD",
+      "parcel_id": "DP881122 Lot 1",
+      "address": "520 Dean Street, Albury NSW",
+      "locality": "Albury",
+      "latitude": -36.0812,
+      "longitude": 146.9158,
+      "zone": "B4 Mixed Use",
+      "bal": "UNKNOWN",
+      "floodCategory": "UNKNOWN",
+      "floodControlLot": false,
+      "lot_size_m2": 510,
+      "frontage_m": 14.5,
+      "corner_lot": false,
+      "setbacks_m": {
+        "front": 3.0,
+        "left": 0.9,
+        "right": 1.2,
+        "rear": 3.5
+      },
+      "prechecks": {
+        "heritage_item": false,
+        "heritage_conservation_area": true,
+        "environmentally_sensitive": false,
+        "critical_habitat": false,
+        "asbestos_management_area": false
+      },
+      "services": {
+        "near_easement": false,
+        "above_sewer_main": true,
+        "distance_to_dwelling_m": 2.5
+      },
+      "overlay_source": "pending-portal",
+      "notes": "Representative for Centre-zoned secondary structures."
+    },
+    {
+      "id": "ALB-007",
+      "label": "Neighbourhood centre pad — Lavington",
+      "parcel_id": "DP750900 Lot 5",
+      "address": "180 Urana Road, Lavington NSW",
+      "locality": "Lavington",
+      "latitude": -36.0431,
+      "longitude": 146.936,
+      "zone": "B1 Neighbourhood Centre",
+      "bal": "UNKNOWN",
+      "floodCategory": "UNKNOWN",
+      "floodControlLot": false,
+      "lot_size_m2": 860,
+      "frontage_m": 20.0,
+      "corner_lot": true,
+      "setbacks_m": {
+        "front": 4.0,
+        "secondary_front": 3.5,
+        "left": 1.5,
+        "right": 3.0,
+        "rear": 6.0
+      },
+      "prechecks": {
+        "heritage_item": false,
+        "heritage_conservation_area": false,
+        "environmentally_sensitive": false,
+        "critical_habitat": false,
+        "asbestos_management_area": false
+      },
+      "services": {
+        "near_easement": true,
+        "above_sewer_main": false,
+        "distance_to_dwelling_m": 5.0
+      },
+      "overlay_source": "pending-portal",
+      "notes": "Useful for patio additions to small commercial dwellings."
+    },
+    {
+      "id": "ALB-008",
+      "label": "Industrial fringe allotment — North Albury",
+      "parcel_id": "DP765432 Lot 12",
+      "address": "4 Industry Court, North Albury NSW",
+      "locality": "North Albury",
+      "latitude": -36.0496,
+      "longitude": 146.9264,
+      "zone": "IN1 General Industrial",
+      "bal": "UNKNOWN",
+      "floodCategory": "UNKNOWN",
+      "floodControlLot": false,
+      "lot_size_m2": 980,
+      "frontage_m": 24.0,
+      "corner_lot": false,
+      "setbacks_m": {
+        "front": 8.0,
+        "left": 2.0,
+        "right": 2.0,
+        "rear": 6.0
+      },
+      "prechecks": {
+        "heritage_item": false,
+        "heritage_conservation_area": false,
+        "environmentally_sensitive": false,
+        "critical_habitat": false,
+        "asbestos_management_area": false
+      },
+      "services": {
+        "near_easement": false,
+        "above_sewer_main": false,
+        "distance_to_dwelling_m": 12.0
+      },
+      "overlay_source": "pending-portal",
+      "notes": "Illustrates scenario outside SEPP Division D zoning scope."
+    },
+    {
+      "id": "ALB-009",
+      "label": "Flood fringe lot — South Albury",
+      "parcel_id": "DP542210 Lot 8",
+      "address": "6 Riverbank Court, South Albury NSW",
+      "locality": "South Albury",
+      "latitude": -36.0923,
+      "longitude": 146.9172,
+      "zone": "R2 Low Density Residential",
+      "bal": "UNKNOWN",
+      "floodCategory": "UNKNOWN",
+      "floodControlLot": true,
+      "lot_size_m2": 680,
+      "frontage_m": 16.0,
+      "corner_lot": false,
+      "setbacks_m": {
+        "front": 6.5,
+        "left": 1.2,
+        "right": 1.5,
+        "rear": 5.0
+      },
+      "prechecks": {
+        "heritage_item": false,
+        "heritage_conservation_area": false,
+        "environmentally_sensitive": true,
+        "critical_habitat": false,
+        "asbestos_management_area": false
+      },
+      "services": {
+        "near_easement": true,
+        "above_sewer_main": false,
+        "distance_to_dwelling_m": 5.0
+      },
+      "overlay_source": "pending-portal",
+      "notes": "Mark for flood mapping verification once portal access is granted."
+    },
+    {
+      "id": "ALB-010",
+      "label": "Bushfire interface acreage — Splitters Creek",
+      "parcel_id": "DP334455 Lot 4",
+      "address": "95 Ridgeview Road, Splitters Creek NSW",
+      "locality": "Splitters Creek",
+      "latitude": -36.0715,
+      "longitude": 146.8577,
+      "zone": "R5 Large Lot Residential",
+      "bal": "UNKNOWN",
+      "floodCategory": "UNKNOWN",
+      "floodControlLot": false,
+      "lot_size_m2": 5200,
+      "frontage_m": 42.0,
+      "corner_lot": false,
+      "setbacks_m": {
+        "front": 15.0,
+        "left": 8.0,
+        "right": 8.0,
+        "rear": 20.0
+      },
+      "prechecks": {
+        "heritage_item": false,
+        "heritage_conservation_area": false,
+        "environmentally_sensitive": false,
+        "critical_habitat": false,
+        "asbestos_management_area": false
+      },
+      "services": {
+        "near_easement": false,
+        "above_sewer_main": false,
+        "distance_to_dwelling_m": 25.0
+      },
+      "overlay_source": "pending-portal",
+      "notes": "Use to validate BAL data import for ridge-line properties."
+    },
+    {
+      "id": "ALB-011",
+      "label": "Heritage streetscape lot — Central Albury",
+      "parcel_id": "DP667700 Lot 3",
+      "address": "14 Olive Street, Albury NSW",
+      "locality": "Albury",
+      "latitude": -36.0786,
+      "longitude": 146.9169,
+      "zone": "R1 General Residential",
+      "bal": "UNKNOWN",
+      "floodCategory": "UNKNOWN",
+      "floodControlLot": false,
+      "lot_size_m2": 540,
+      "frontage_m": 13.5,
+      "corner_lot": false,
+      "setbacks_m": {
+        "front": 7.0,
+        "left": 1.2,
+        "right": 1.5,
+        "rear": 5.5
+      },
+      "prechecks": {
+        "heritage_item": true,
+        "heritage_conservation_area": true,
+        "environmentally_sensitive": false,
+        "critical_habitat": false,
+        "asbestos_management_area": false
+      },
+      "services": {
+        "near_easement": false,
+        "above_sewer_main": true,
+        "distance_to_dwelling_m": 3.5
+      },
+      "overlay_source": "pending-portal",
+      "notes": "Triggers pre-check gating for heritage controls."
+    },
+    {
+      "id": "ALB-012",
+      "label": "Steep slope site — Glenroy",
+      "parcel_id": "DP721199 Lot 45",
+      "address": "28 Springhill Drive, Glenroy NSW",
+      "locality": "Glenroy",
+      "latitude": -36.0422,
+      "longitude": 146.9188,
+      "zone": "R1 General Residential",
+      "bal": "UNKNOWN",
+      "floodCategory": "UNKNOWN",
+      "floodControlLot": false,
+      "lot_size_m2": 780,
+      "frontage_m": 19.5,
+      "corner_lot": false,
+      "setbacks_m": {
+        "front": 6.0,
+        "left": 1.5,
+        "right": 2.5,
+        "rear": 7.5
+      },
+      "prechecks": {
+        "heritage_item": false,
+        "heritage_conservation_area": false,
+        "environmentally_sensitive": true,
+        "critical_habitat": false,
+        "asbestos_management_area": false
+      },
+      "services": {
+        "near_easement": true,
+        "above_sewer_main": false,
+        "distance_to_dwelling_m": 4.5
+      },
+      "overlay_source": "pending-portal",
+      "notes": "Represents hillside lots needing slope/environment flags."
     }
   ]
 }
+
