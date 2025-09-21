@@ -1,12 +1,30 @@
-// Normalise engine output into { ok, result: { checks[] , verdict } }
-export async function runAssessment(property, proposal) {
-  try {
-    // Load combined engine (structure + overlays)
+const defaultDeps = {
+  async loadAssessAll() {
     const engineMod = await import("../../../../src/engine/assessAll");
     const assessAll = engineMod.assessAll || engineMod.default;
     if (typeof assessAll !== "function") {
-      return { ok: false, message: "Rules engine not found (src/engine/assessAll)." };
+      throw new Error("Rules engine not found (src/engine/assessAll).");
     }
+    return assessAll;
+  },
+  async loadOverlaySnapshotForSample(property) {
+    try {
+      const overlayMod = await import("../../../../src/overlay/adapter");
+      const fn = overlayMod.getOverlaySnapshotForSample;
+      if (typeof fn === "function") {
+        return await fn(property);
+      }
+    } catch {
+      // adapter is optional; we fall back below
+    }
+    return null;
+  },
+};
+
+// Normalise engine output into { ok, result: { checks[] , verdict } }
+export async function runAssessment(property, proposal, deps = defaultDeps) {
+  try {
+    const assessAll = await deps.loadAssessAll();
 
     // Map proposal into the engine's RuleInput shape
     const input = {
@@ -17,65 +35,82 @@ export async function runAssessment(property, proposal) {
       setback: Number(proposal.nearest_boundary_m) || 0,
     };
 
-    // Try to build an overlay snapshot via adapter (if present)
-    let overlay = null;
-    try {
-      const overlayMod = await import("../../../../src/overlay/adapter");
-      const fn = overlayMod.getOverlaySnapshotForSample;
-      if (typeof fn === "function") {
-        overlay = await fn(property);
-      }
-    } catch {
-      // adapter is optional; we fall back below
-    }
+    let overlay = await deps.loadOverlaySnapshotForSample(property);
 
     // Safe fallback so the prototype keeps working until the adapter/rules land
     if (!overlay) {
       overlay = {
         zone: property?.zone || "R2",
-        floodControlLot: false,
-        bal: "BAL-12.5",
+        floodControlLot: Boolean(property?.floodControlLot) || false,
+        bal: property?.bal || "BAL-12.5",
+        floodCategory: property?.floodCategory || "UNKNOWN",
       };
     }
 
-    const result = await assessAll(input, overlay);
+    const engineOutput = await assessAll(input, overlay);
+    const overlayDetails = engineOutput?.details?.overlays ?? null;
+    const overlaySnapshot = overlayDetails?.snapshot ?? overlay ?? null;
 
     // -------- Normalise checks for the UI --------
     let checks = [];
 
-    // Preferred: engine reasons[] -> checks[]
-    if (Array.isArray(result?.reasons)) {
-      checks = result.reasons.map((r, i) => ({
-        id: `rule_${i + 1}`,
-        ok: /\bsatisfied\b/i.test(r), // PASS if engine says "… satisfied"
-        message: r,                   // show the engine's text verbatim
-      }));
-    }
-    // Fallback: structured checks
-    else if (Array.isArray(result?.checks)) {
-      checks = result.checks.map((c, i) => ({
+    const structureChecks = engineOutput?.details?.structure?.checks ?? engineOutput?.checks;
+    if (Array.isArray(structureChecks) && structureChecks.length) {
+      checks = structureChecks.map((c, i) => ({
         id: c.id || `rule_${i + 1}`,
-        ok: !!(c.ok ?? c.pass ?? c.valid),
+        ok: !!c.ok,
         message: c.message || c.title || "Check",
+        clause: c.clause || null,
+        citation: c.citation || null,
       }));
-    }
-    // Very defensive: array of strings/booleans/objects
-    else if (Array.isArray(result)) {
-      checks = result.map((c, i) =>
+    } else if (Array.isArray(engineOutput?.reasons)) {
+      checks = engineOutput.reasons.map((r, i) => ({
+        id: `rule_${i + 1}`,
+        ok: /\bsatisfied\b/i.test(r),
+        message: r,
+        clause: null,
+        citation: null,
+      }));
+    } else if (Array.isArray(engineOutput)) {
+      checks = engineOutput.map((c, i) =>
         typeof c === "string"
-          ? { id: `rule_${i + 1}`, ok: /\bsatisfied\b/i.test(c), message: c }
+          ? { id: `rule_${i + 1}`, ok: /\bsatisfied\b/i.test(c), message: c, clause: null, citation: null }
           : typeof c === "boolean"
-          ? { id: `rule_${i + 1}`, ok: c, message: c ? "Pass" : "Fail" }
+          ? { id: `rule_${i + 1}`, ok: c, message: c ? "Pass" : "Fail", clause: null, citation: null }
           : {
               id: c.id || `rule_${i + 1}`,
               ok: !!(c.ok ?? c.pass ?? c.valid),
               message: c.message || c.title || "Check",
+              clause: c.clause || null,
+              citation: c.citation || null,
             }
       );
     }
 
-    return { ok: true, result: { checks, verdict: result?.verdict } };
+    if (overlayDetails && Array.isArray(overlayDetails.reasons) && overlayDetails.reasons.length) {
+      overlayDetails.reasons.forEach((reason, idx) => {
+        checks.push({
+          id: `overlay_${idx + 1}`,
+          ok: false,
+          message: reason,
+          clause: 'SEPP Exempt Development 2008 Part 2 general exclusions',
+          citation: 'Overlay gating (zone, flood, bushfire)',
+        });
+      });
+    }
+
+    return {
+      ok: true,
+      result: {
+        checks,
+        verdict: engineOutput?.verdict,
+        overlay: overlaySnapshot,
+        overlays: overlayDetails ?? undefined,
+      },
+    };
   } catch (e) {
     return { ok: false, message: e?.message || String(e) };
   }
 }
+
+export const __test__ = { defaultDeps };
