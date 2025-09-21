@@ -4,44 +4,64 @@
  *  - Height ≤ 3.0 m
  *  - Nearest boundary distance ≥ 0.5 m
  */
-import type { RuleInput, RuleResult } from './types';
+import type { RuleInput, RuleResult, RuleCheck } from './types';
 
 const r1 = (n: number) => Math.round(n * 10) / 10;
 const area = (i: RuleInput) => i.length * i.width;
-
-function checkArea(i: RuleInput): string | null {
-  const a = area(i);
-  return a <= 20 ? null : `Area ${r1(a)} m² exceeds 20 m²`;
-}
-function checkHeight(i: RuleInput): string | null {
-  return i.height <= 3 ? null : `Height ${r1(i.height)} m exceeds 3.0 m`;
-}
-function checkSetback(i: RuleInput): string | null {
-  return i.setback >= 0.5
-    ? null
-    : `Nearest boundary distance ${r1(i.setback)} m is under 0.5 m`;
-}
 
 /**
  * Pure assessment function (no I/O, deterministic).
  * Returns LIKELY_EXEMPT only if all three checks pass.
  */
 export function assess(input: RuleInput): RuleResult {
-  const failures = [checkArea(input), checkHeight(input), checkSetback(input)]
-    .filter((m): m is string => Boolean(m));
+  const checks: RuleCheck[] = [];
 
-  if (failures.length === 0) {
-    return {
-      verdict: 'LIKELY_EXEMPT',
-      reasons: [
-        'Area (≤ 20 m²) satisfied',
-        'Height (≤ 3.0 m) satisfied',
-        'Nearest boundary distance (≥ 0.5 m) satisfied',
-      ],
-    };
-  }
-  return { verdict: 'NOT_EXEMPT', reasons: failures };
+  const a = area(input);
+  const areaOk = a <= 20;
+  checks.push({
+    id: 'structure-area',
+    ok: areaOk,
+    message: areaOk
+      ? 'Area (≤ 20 m²) satisfied'
+      : `Area ${r1(a)} m² exceeds 20 m²`,
+    clause: 'SEPP Exempt Development 2008 cl. 2.18(1)(a)',
+    citation: 'Subdivision 7 — Development ancillary to dwelling houses (Outbuildings)',
+  });
+
+  const heightOk = input.height <= 3;
+  checks.push({
+    id: 'structure-height',
+    ok: heightOk,
+    message: heightOk
+      ? 'Height (≤ 3.0 m) satisfied'
+      : `Height ${r1(input.height)} m exceeds 3.0 m`,
+    clause: 'SEPP Exempt Development 2008 cl. 2.18(1)(c)',
+    citation: 'Subdivision 7 — Development ancillary to dwelling houses (Outbuildings)',
+  });
+
+  const setbackOk = input.setback >= 0.5;
+  checks.push({
+    id: 'structure-setback',
+    ok: setbackOk,
+    message: setbackOk
+      ? 'Nearest boundary distance (≥ 0.5 m) satisfied'
+      : `Nearest boundary distance ${r1(input.setback)} m is under 0.5 m`,
+    clause: 'SEPP Exempt Development 2008 cl. 2.18(1)(f)',
+    citation: 'Subdivision 7 — Development ancillary to dwelling houses (Outbuildings)',
+  });
+
+  const failures = checks.filter((c) => !c.ok).map((c) => c.message);
+
+  const verdict = failures.length === 0 ? 'LIKELY_EXEMPT' : 'NOT_EXEMPT';
+
+  return {
+    verdict,
+    reasons: failures.length === 0
+      ? checks.map((c) => c.message)
+      : failures,
+    checks,
+  };
 }
 
 // (Optional) export internals for unit tests/debugging
-export const _internal = { area, checkArea, checkHeight, checkSetback, r1 };
+export const _internal = { area, r1 };
