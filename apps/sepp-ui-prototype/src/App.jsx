@@ -6,6 +6,7 @@ import "./App.css";
 /** Friendly zone names (R1 → “General Residential”, etc.) */
 import { getZoneFriendlyName } from "../../../src/overlay/zoneNames";
 
+/* UI atoms */
 function Badge({ tone = "neutral", children }) {
   return <span className={`badge badge--${tone}`}>{children}</span>;
 }
@@ -259,11 +260,57 @@ export default function App() {
     return o;
   }, [assessment]);
 
+  // --------- States: loading / error ----------
+  if (loading) {
+    return (
+      <main className="container">
+        <header className="app-header">
+          <h1 className="title">SEPP Sheds and Patios</h1>
+          <div className="badges">
+            <Badge tone="neutral">Sprint 3</Badge>
+            <Badge tone="neutral">Loading…</Badge>
+          </div>
+        </header>
+        <section className="card"><p>Loading sample data…</p></section>
+      </main>
+    );
+  }
+
+  if (error) {
+    return (
+      <main className="container">
+        <header className="app-header">
+          <h1 className="title">SEPP Sheds and Patios</h1>
+          <div className="badges">
+            <Badge tone="neutral">Sprint 3</Badge>
+            <Badge tone="red">Data: invalid</Badge>
+          </div>
+        </header>
+
+        <section className="card card--error">
+          <h3>Data validation failed</h3>
+          <p>{error.message || "Invalid data."}</p>
+          {error.issues && (
+            <ul className="issues">
+              {error.issues.map((line, i) => (
+                <li key={i}>{line}</li>
+              ))}
+            </ul>
+          )}
+          <p className="muted">
+            Fix <code>public/data/properties.json</code> to continue.
+          </p>
+        </section>
+      </main>
+    );
+  }
+
+  // --------- Normal UI ----------
   return (
     <main className="container">
-      {/* Make select and + share a row reliably even if App.css forces width */}
+      {/* Keep sample select + add button on one line */}
       <style>{`
-        .choose-row { display: flex, align-items: center, gap: 8px, width: 100% }
+        .choose-row { display: flex; align-items: center; gap: 8px; width: 100%; }
         .choose-row .select { flex: 1 1 auto; width: auto; min-width: 0; }
         .icon-btn { flex: 0 0 auto; }
       `}</style>
@@ -420,7 +467,7 @@ export default function App() {
                 <h3>Overlays</h3>
               </div>
               <div className="chips" style={{ flexWrap: "wrap" }}>
-                {overlaySnap.zone && overlaySnap.zone !== 'UNKNOWN' ? (
+                {overlaySnap.zone && overlaySnap.zone !== "UNKNOWN" ? (
                   <Chip>
                     {overlaySnap.zone} — {getZoneFriendlyName(overlaySnap.zone)}
                   </Chip>
@@ -428,25 +475,25 @@ export default function App() {
                   <Chip>Zone: Unknown</Chip>
                 )}
 
-                {overlaySnap.bal && overlaySnap.bal !== 'UNKNOWN' ? (
+                {overlaySnap.bal && overlaySnap.bal !== "UNKNOWN" ? (
                   <Chip>BAL: {overlaySnap.bal}</Chip>
                 ) : (
                   <Chip>BAL: Unknown</Chip>
                 )}
 
-                {overlaySnap.floodCategory && overlaySnap.floodCategory !== 'UNKNOWN' ? (
+                {overlaySnap.floodCategory && overlaySnap.floodCategory !== "UNKNOWN" ? (
                   <Chip>
-                    {overlaySnap.floodCategory === 'NONE'
-                      ? 'Flood: None'
+                    {overlaySnap.floodCategory === "NONE"
+                      ? "Flood: None"
                       : `Flood: ${overlaySnap.floodCategory}`}
                   </Chip>
                 ) : (
                   <Chip>Flood: Unknown</Chip>
                 )}
 
-                {typeof overlaySnap.floodControlLot === 'boolean' && (
+                {typeof overlaySnap.floodControlLot === "boolean" && (
                   <Chip>
-                    {overlaySnap.floodControlLot ? 'Flood control/ hazard area' : 'Not a flood control lot'}
+                    {overlaySnap.floodControlLot ? "Flood control/ hazard area" : "Not a flood control lot"}
                   </Chip>
                 )}
               </div>
@@ -474,12 +521,14 @@ export default function App() {
               <>
                 <p style={{ margin: "6px 0 12px" }}>
                   <strong>Verdict:</strong>{" "}
-                  <span style={{
-                    padding: "2px 8px",
-                    borderRadius: 999,
-                    background: (assessment.result?.verdict || "NOT_EXEMPT") === "LIKELY_EXEMPT" ? "#DCFCE7" : "#FEE2E2",
-                    color: (assessment.result?.verdict || "NOT_EXEMPT") === "LIKELY_EXEMPT" ? "#166534" : "#991B1B"
-                  }}>
+                  <span
+                    style={{
+                      padding: "2px 8px",
+                      borderRadius: 999,
+                      background: (assessment.result?.verdict || "NOT_EXEMPT") === "LIKELY_EXEMPT" ? "#DCFCE7" : "#FEE2E2",
+                      color: (assessment.result?.verdict || "NOT_EXEMPT") === "LIKELY_EXEMPT" ? "#166534" : "#991B1B"
+                    }}
+                  >
                     {assessment.result?.verdict}
                   </span>
                 </p>
