@@ -13,7 +13,8 @@ describe('FM-27 rules engine', () => {
     };
     const res = assess(input);
     expect(res.verdict).toBe('LIKELY_EXEMPT');
-    expect(res.reasons).toHaveLength(3);
+    expect(res.checks).toHaveLength(3);
+    expect(res.checks.every((c) => c.ok)).toBe(true);
   });
 
   it('boundary values pass: area=20, height=3.0, setback=0.5', () => {
@@ -26,6 +27,7 @@ describe('FM-27 rules engine', () => {
     };
     const res = assess(input);
     expect(res.verdict).toBe('LIKELY_EXEMPT');
+    expect(res.checks.every((c) => c.ok)).toBe(true);
   });
 
   it('NOT_EXEMPT when setback < 0.5', () => {
@@ -39,6 +41,7 @@ describe('FM-27 rules engine', () => {
     const res = assess(input);
     expect(res.verdict).toBe('NOT_EXEMPT');
     expect(res.reasons.join(' ')).toMatch(/under 0\.5/);
+    expect(res.checks.find((c) => c.id === 'structure-setback')?.ok).toBe(false);
   });
 
   it('NOT_EXEMPT when height > 3.0', () => {
@@ -52,6 +55,7 @@ describe('FM-27 rules engine', () => {
     const res = assess(input);
     expect(res.verdict).toBe('NOT_EXEMPT');
     expect(res.reasons.join(' ')).toMatch(/exceeds 3\.0/);
+    expect(res.checks.find((c) => c.id === 'structure-height')?.clause).toMatch(/2\.18/);
   });
 
   it('NOT_EXEMPT when area > 20', () => {
@@ -65,5 +69,6 @@ describe('FM-27 rules engine', () => {
     const res = assess(input);
     expect(res.verdict).toBe('NOT_EXEMPT');
     expect(res.reasons.join(' ')).toMatch(/exceeds 20/);
+    expect(res.checks.find((c) => c.id === 'structure-area')?.ok).toBe(false);
   });
 });
