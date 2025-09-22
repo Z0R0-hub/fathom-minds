@@ -13,7 +13,16 @@ export interface RuleInput {
 
 export type Verdict = 'LIKELY_EXEMPT' | 'NOT_EXEMPT';
 
+export interface RuleCheck {
+  id: string;
+  ok: boolean;
+  message: string;
+  clause: string;
+  citation?: string;
+}
+
 export interface RuleResult {
   verdict: Verdict;
-  reasons: string[]; // satisfied statements (if exempt) or failure reasons
+  reasons: string[]; // backward-compatible summary strings
+  checks: RuleCheck[];
 }
